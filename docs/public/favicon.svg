@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="12" fill="#1a4b8c"/>
+  <!-- Compass rose -->
+  <g stroke="#ffffff" stroke-linejoin="round">
+    <circle cx="32" cy="32" r="21" fill="none" stroke-opacity="0.35" stroke-width="2"/>
+    <path d="M32 14 L38 32 L32 29 L26 32 Z" fill="#ffffff" stroke-width="1.5"/>
+    <path d="M32 50 L26 32 L32 35 L38 32 Z" fill="none" stroke-opacity="0.7" stroke-width="1.5"/>
+    <circle cx="32" cy="32" r="3" fill="#ffffff" stroke-width="1"/>
+  </g>
+</svg>
