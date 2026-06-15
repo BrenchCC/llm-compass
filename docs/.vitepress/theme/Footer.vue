@@ -28,9 +28,21 @@ const links = [
 
 <style scoped>
 .compass-footer {
+  position: relative;
   border-top: 1px solid var(--vp-c-divider);
-  padding: 24px 24px 32px;
-  background: var(--vp-c-bg);
+  padding: 32px 24px 38px;
+  background:
+    linear-gradient(180deg, var(--vp-c-bg-alt), var(--vp-c-bg) 72%);
+}
+.compass-footer::before {
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  width: 72px;
+  height: 2px;
+  background: var(--vp-c-brand-1);
+  content: '';
+  transform: translateX(-50%);
 }
 .compass-footer-inner {
   max-width: 1152px;
@@ -40,23 +52,32 @@ const links = [
 .compass-footer-links {
   display: flex;
   justify-content: center;
-  gap: 20px;
-  margin: 0 0 8px;
+  gap: 24px;
+  margin: 0 0 10px;
 }
 .compass-footer-links a {
-  font-size: 14px;
-  font-weight: 500;
+  font-family: 'Fraunces', 'Noto Serif SC', serif;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
   color: var(--vp-c-text-2);
-  transition: color 0.2s;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition:
+    color 0.16s ease,
+    text-decoration-color 0.16s ease;
 }
 .compass-footer-links a:hover {
   color: var(--vp-c-brand-1);
+  text-decoration-color: currentColor;
 }
 .compass-footer-copy {
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--vp-c-text-3);
   margin: 0;
+  color: var(--vp-c-text-3);
+  font-size: 12px;
+  line-height: 1.75;
+  letter-spacing: 0.02em;
 }
 .compass-footer-copy a {
   color: var(--vp-c-text-2);
@@ -64,5 +85,26 @@ const links = [
 }
 .compass-footer-copy a:hover {
   color: var(--vp-c-brand-1);
+}
+
+.compass-footer a:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+@media (max-width: 640px) {
+  .compass-footer {
+    padding: 28px 20px 32px;
+  }
+
+  .compass-footer-links {
+    gap: 20px;
+  }
+
+  .compass-footer-copy {
+    max-width: 34em;
+    margin: 0 auto;
+  }
 }
 </style>

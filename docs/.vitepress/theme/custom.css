@@ -1,105 +1,391 @@
 /* ============================================================
-   LLM Compass — 学术白（LaTeX 论文风）
-   纯白底 · 墨黑正文 · 深蓝链接 · 衬线排印 · 公式裸排
+   LLM Compass - refined academic paper theme
    ============================================================ */
 
 :root {
   --compass-accent: #1a4b8c;
   --compass-accent-deep: #123866;
-  --compass-wash: rgba(26, 75, 140, 0.06);
+  --compass-paper: #fffefb;
+  --compass-paper-soft: #f8f7f3;
+  --compass-ink: #151515;
+  --compass-rule: #dedbd4;
+  --compass-wash: rgba(26, 75, 140, 0.07);
+  --compass-wash-strong: rgba(26, 75, 140, 0.12);
+  --compass-shadow: 0 12px 32px rgba(37, 42, 48, 0.05);
 
   --vp-c-brand-1: var(--compass-accent);
   --vp-c-brand-2: var(--compass-accent-deep);
   --vp-c-brand-3: var(--compass-accent);
   --vp-c-brand-soft: var(--compass-wash);
 
-  --vp-c-bg: #ffffff;
-  --vp-c-bg-alt: #fafafa;
-  --vp-c-bg-soft: #fafafa;
-  --vp-c-bg-elv: #ffffff;
+  --vp-c-bg: var(--compass-paper);
+  --vp-c-bg-alt: var(--compass-paper-soft);
+  --vp-c-bg-soft: #f5f4f0;
+  --vp-c-bg-elv: var(--compass-paper);
 
-  --vp-c-text-1: #111111;
-  --vp-c-text-2: #444444;
-  --vp-c-text-3: #888888;
+  --vp-c-text-1: var(--compass-ink);
+  --vp-c-text-2: #4b4a47;
+  --vp-c-text-3: #807e78;
 
-  --vp-c-divider: #e0e0e0;
-  --vp-c-border: #cccccc;
+  --vp-c-divider: var(--compass-rule);
+  --vp-c-border: #cbc7be;
+  --vp-c-gutter: #e8e5de;
 
   --vp-font-family-base: 'Fraunces', 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   --vp-font-family-mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
 
-  --vp-nav-bg-color: rgba(255, 255, 255, 0.9);
-  --vp-sidebar-bg-color: #fafafa;
+  --vp-nav-bg-color: rgba(255, 254, 251, 0.92);
+  --vp-sidebar-bg-color: var(--compass-paper-soft);
 
   --vp-code-color: var(--compass-accent-deep);
-  --vp-code-bg: #f2f2f2;
+  --vp-code-bg: rgba(26, 75, 140, 0.07);
+  --vp-code-block-bg: #f5f5f3;
+
+  --vp-custom-block-info-border: #c8c5bd;
+  --vp-custom-block-info-bg: #f5f4f0;
+  --vp-custom-block-tip-border: var(--compass-accent);
+  --vp-custom-block-tip-bg: var(--compass-wash);
+  --vp-custom-block-warning-border: #a16b1f;
+  --vp-custom-block-warning-bg: rgba(161, 107, 31, 0.08);
+  --vp-custom-block-danger-border: #a33a3a;
+  --vp-custom-block-danger-bg: rgba(163, 58, 58, 0.07);
 }
 
 .dark {
-  --compass-accent: #8ab4f8;
-  --compass-accent-deep: #aecbfa;
-  --compass-wash: rgba(138, 180, 248, 0.1);
+  --compass-accent: #9abef3;
+  --compass-accent-deep: #c1d6f5;
+  --compass-paper: #1b1c1e;
+  --compass-paper-soft: #17181a;
+  --compass-ink: #e8e6e1;
+  --compass-rule: #36383c;
+  --compass-wash: rgba(154, 190, 243, 0.1);
+  --compass-wash-strong: rgba(154, 190, 243, 0.16);
+  --compass-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
 
-  --vp-c-bg: #1c1c1c;
-  --vp-c-bg-alt: #161616;
-  --vp-c-bg-soft: #242424;
-  --vp-c-bg-elv: #242424;
+  --vp-c-bg: var(--compass-paper);
+  --vp-c-bg-alt: var(--compass-paper-soft);
+  --vp-c-bg-soft: #24262a;
+  --vp-c-bg-elv: #24262a;
 
-  --vp-c-text-1: #e3e3e3;
-  --vp-c-text-2: #aaaaaa;
-  --vp-c-text-3: #777777;
+  --vp-c-text-1: var(--compass-ink);
+  --vp-c-text-2: #b6b3ad;
+  --vp-c-text-3: #888783;
 
-  --vp-c-divider: #333333;
-  --vp-c-border: #444444;
+  --vp-c-divider: var(--compass-rule);
+  --vp-c-border: #484a4f;
+  --vp-c-gutter: #303236;
 
-  --vp-nav-bg-color: rgba(28, 28, 28, 0.9);
-  --vp-sidebar-bg-color: #161616;
+  --vp-nav-bg-color: rgba(27, 28, 30, 0.92);
+  --vp-sidebar-bg-color: var(--compass-paper-soft);
 
   --vp-code-color: var(--compass-accent);
-  --vp-code-bg: rgba(255, 255, 255, 0.07);
+  --vp-code-bg: rgba(154, 190, 243, 0.1);
+  --vp-code-block-bg: #222428;
+
+  --vp-custom-block-info-border: #55575c;
+  --vp-custom-block-info-bg: #24262a;
+  --vp-custom-block-tip-border: var(--compass-accent);
+  --vp-custom-block-tip-bg: var(--compass-wash);
+  --vp-custom-block-warning-border: #c49351;
+  --vp-custom-block-warning-bg: rgba(196, 147, 81, 0.1);
+  --vp-custom-block-danger-border: #d07878;
+  --vp-custom-block-danger-bg: rgba(208, 120, 120, 0.09);
 }
 
-/* ============ 排印 ============ */
+/* Navigation and sidebar */
+.VPNavBar {
+  border-bottom: 1px solid var(--compass-rule);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+}
+
+.dark .VPNavBar {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.VPNavBarTitle .title {
+  font-family: 'Fraunces', 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 720;
+  letter-spacing: 0.025em;
+}
+
+.VPNavBarMenuLink,
+.VPNavBarMenuGroup .text {
+  letter-spacing: 0.02em;
+}
+
+.VPNavBarMenuLink.active {
+  position: relative;
+}
+
+.VPNavBarMenuLink.active::after {
+  position: absolute;
+  right: 0;
+  bottom: 8px;
+  left: 0;
+  height: 1px;
+  background: var(--compass-accent);
+  content: '';
+}
+
+.VPSidebar {
+  border-right: 1px solid var(--compass-rule);
+  box-shadow: inset -8px 0 24px rgba(42, 43, 46, 0.018);
+}
+
+.VPSidebarItem.level-0 > .item .text {
+  font-family: 'Fraunces', 'Noto Serif SC', serif;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+}
+
+.VPSidebarItem .item .text {
+  transition: color 0.16s ease;
+}
+
+.VPSidebarItem .item:hover .text,
+.VPSidebarItem.is-active > .item .text {
+  color: var(--compass-accent);
+}
+
+.VPDocAsideOutline .outline-link {
+  transition: color 0.16s ease;
+}
+
+.VPDocAsideOutline .outline-link.active {
+  font-weight: 600;
+}
+
+/* Document typography */
 .vp-doc {
   font-size: 16.5px;
-  line-height: 1.85;
+  line-height: 1.88;
+  letter-spacing: 0.006em;
 }
 
 .vp-doc h1,
 .vp-doc h2,
-.vp-doc h3,
-.VPNavBarTitle .title {
+.vp-doc h3 {
   font-family: 'Fraunces', 'Noto Serif SC', 'Songti SC', serif;
+  color: var(--compass-ink);
 }
-.vp-doc h1 { font-weight: 700; font-size: 2.3rem; }
-.vp-doc h2 { font-weight: 650; }
-.vp-doc h3 { font-weight: 650; }
-.VPNavBarTitle .title { font-weight: 700; letter-spacing: 0.02em; }
 
-/* 侧边栏分组标题 */
-.VPSidebarItem.level-0 > .item .text {
-  font-family: 'Fraunces', 'Noto Serif SC', serif;
+.vp-doc h1 {
+  margin-bottom: 22px;
+  font-size: 2.4rem;
+  font-weight: 720;
+  line-height: 1.2;
+  letter-spacing: -0.018em;
+}
+
+.vp-doc h2 {
+  margin-top: 56px;
+  border-top: 1px solid var(--compass-rule);
+  padding-top: 25px;
   font-weight: 650;
-  letter-spacing: 0.03em;
+  letter-spacing: -0.01em;
 }
 
-/* 链接：论文式下划线 */
+.vp-doc h3 {
+  margin-top: 36px;
+  font-weight: 650;
+  letter-spacing: -0.006em;
+}
+
+.vp-doc h2 .header-anchor {
+  top: 25px;
+}
+
+.vp-doc p {
+  line-height: 1.88;
+}
+
+.vp-doc strong {
+  color: var(--compass-ink);
+  font-weight: 650;
+}
+
+.vp-doc li + li {
+  margin-top: 9px;
+}
+
+/* Academic-style links */
 .vp-doc a {
   font-weight: 500;
   text-decoration: underline;
+  text-decoration-color: rgba(26, 75, 140, 0.38);
   text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-  text-decoration-color: rgba(26, 75, 140, 0.4);
-  transition: text-decoration-color 0.15s ease;
+  text-underline-offset: 4px;
+  transition:
+    color 0.16s ease,
+    text-decoration-color 0.16s ease;
 }
-.vp-doc a:hover { text-decoration-color: currentColor; }
-.dark .vp-doc a { text-decoration-color: rgba(138, 180, 248, 0.4); }
 
-/* 公式：裸排，仅留呼吸空间 */
-.vp-doc mjx-container[display='true'] {
-  display: block;
+.vp-doc a:hover {
+  text-decoration-color: currentColor;
+}
+
+.dark .vp-doc a {
+  text-decoration-color: rgba(154, 190, 243, 0.42);
+}
+
+/* Tables and supporting content */
+.vp-doc table {
+  margin: 26px 0;
+  border: 1px solid var(--compass-rule);
+  border-radius: 6px;
+  box-shadow: var(--compass-shadow);
+}
+
+.vp-doc tr {
+  border-top-color: var(--compass-rule);
+}
+
+.vp-doc tr:nth-child(2n) {
+  background: var(--compass-paper-soft);
+}
+
+.vp-doc tbody tr:hover {
+  background: var(--compass-wash);
+}
+
+.vp-doc th,
+.vp-doc td {
+  border-color: var(--compass-rule);
+  padding: 10px 16px;
+}
+
+.vp-doc th {
+  background: var(--compass-paper-soft);
+  color: var(--compass-ink);
+  font-family: 'Fraunces', 'Noto Serif SC', serif;
+  font-weight: 650;
+  letter-spacing: 0.025em;
+}
+
+.vp-doc blockquote {
   margin: 24px 0;
+  border-left: 3px solid var(--compass-accent);
+  padding: 13px 18px;
+  background: linear-gradient(90deg, var(--compass-wash), transparent 85%);
+  color: var(--vp-c-text-2);
+}
+
+.vp-doc hr {
+  margin: 32px 0;
+  border-top-color: var(--compass-rule);
+}
+
+.vp-doc .custom-block {
+  margin: 24px 0;
+  border-width: 1px 1px 1px 3px;
+  border-style: solid;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(37, 42, 48, 0.035);
+}
+
+.dark .vp-doc .custom-block {
+  box-shadow: none;
+}
+
+.vp-doc div[class*='language-'],
+.vp-block {
+  border: 1px solid var(--compass-rule);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(37, 42, 48, 0.045);
+}
+
+.dark .vp-doc div[class*='language-'],
+.dark .vp-block {
+  box-shadow: none;
+}
+
+.vp-doc :not(pre) > code {
+  border: 1px solid var(--compass-wash-strong);
+}
+
+.vp-doc .mermaid {
+  margin: 28px 0;
+  border: 1px solid var(--compass-rule);
+  border-radius: 6px;
+  padding: 24px;
+  background: var(--compass-paper-soft);
+  box-shadow: var(--compass-shadow);
   overflow-x: auto;
 }
 
-::selection { background: var(--compass-wash); }
+/* Display equations keep a clean paper-like presentation. */
+.vp-doc mjx-container[display='true'] {
+  display: block;
+  margin: 28px 0;
+  padding: 2px 0;
+  overflow-x: auto;
+}
+
+/* Accessibility and motion */
+::selection {
+  background: var(--compass-wash-strong);
+}
+
+:focus-visible {
+  outline: 2px solid var(--compass-accent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 767px) {
+  .VPNavBarMenuLink.active::after {
+    display: none;
+  }
+
+  .VPSidebar {
+    border-right: 0;
+    box-shadow: none;
+  }
+
+  .vp-doc {
+    font-size: 16px;
+    line-height: 1.82;
+    letter-spacing: 0;
+  }
+
+  .vp-doc h1 {
+    margin-bottom: 18px;
+    font-size: 2rem;
+  }
+
+  .vp-doc h2 {
+    margin-top: 44px;
+    padding-top: 21px;
+    font-size: 1.55rem;
+  }
+
+  .vp-doc h2 .header-anchor {
+    top: 21px;
+  }
+
+  .vp-doc h3 {
+    margin-top: 30px;
+    font-size: 1.22rem;
+  }
+
+  .vp-doc th,
+  .vp-doc td {
+    padding: 9px 12px;
+  }
+
+  .vp-doc .mermaid {
+    margin: 22px 0;
+    padding: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
