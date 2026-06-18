@@ -16,7 +16,7 @@ flowchart LR
         SFT[SFT 模型]
     end
     subgraph S2[阶段二：奖励建模]
-        PREF[偏好数据<br/>y_w 优于 y_l] --> RM[训练奖励模型]
+        PREF["偏好数据<br/><span style='white-space:nowrap'>y<sub>w</sub> 优于 y<sub>l</sub></span>"] --> RM[训练奖励模型]
     end
     subgraph S3[阶段三：强化学习]
         POLICY[策略 πθ] -->|采样回答| RESP[回答 y]
