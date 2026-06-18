@@ -312,6 +312,16 @@
   background: var(--compass-paper-soft);
   box-shadow: var(--compass-shadow);
   overflow-x: auto;
+  text-align: center;
+}
+
+.vp-doc .mermaid svg {
+  display: block;
+  margin: 0 auto;
+}
+
+.vp-doc .mermaid svg foreignObject {
+  overflow: visible;
 }
 
 /* Display equations keep a clean paper-like presentation. */

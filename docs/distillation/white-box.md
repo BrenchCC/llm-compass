@@ -22,17 +22,20 @@ title: 白盒蒸馏（分布级蒸馏）
 
 ```mermaid
 flowchart TD
-    KD["经典词级 KD<br>forward KL<br>固定数据"]
-    MINI["MiniLLM 2023<br>reverse KL<br>策略梯度优化"]
-    GKD["GKD 2023<br>学生 on-policy 采样<br>广义 JSD"]
-    DLLM["DistiLLM 2024<br>skew KL<br>自适应 off-policy"]
-    DLLM2["DistiLLM-2 2025<br>教师数据 + 学生数据<br>对比式损失"]
+    accTitle: 白盒蒸馏方法演进
+    accDescr: 这张图展示从经典词级 KD 到 MiniLLM、GKD、DistiLLM 与 DistiLLM-2 的方法演进关系。
 
-    KD -->|"改散度"| MINI
-    KD -->|"改序列来源"| GKD
-    MINI --> DLLM
-    GKD --> DLLM
-    DLLM --> DLLM2
+    token_kd["经典 KD"]
+    minillm["MiniLLM"]
+    gkd["GKD"]
+    distillm["DistiLLM"]
+    distillm_2["DistiLLM-2"]
+
+    token_kd -->|"reverse KL"| minillm
+    token_kd -->|"on-policy"| gkd
+    minillm -->|"skew KL"| distillm
+    gkd -->|"off-policy 复用"| distillm
+    distillm -->|"对比式"| distillm_2
 ```
 
 ## 方法与公式
