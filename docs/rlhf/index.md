@@ -36,9 +36,9 @@ flowchart LR
 
 所有 RLHF 算法本质上都在优化"高奖励 + 不偏离原模型太远"这一目标：
 
-$$
+```math
 \max_{\pi_\theta} \; \mathbb{E}_{x \sim \mathcal{D},\, y \sim \pi_\theta(\cdot|x)} \big[ r_\phi(x, y) \big] - \beta \, \mathbb{D}_{\text{KL}}\!\left[ \pi_\theta(\cdot|x) \,\|\, \pi_{\text{ref}}(\cdot|x) \right]
-$$
+```
 
 KL 项有两重作用：一是防止策略为了刷高奖励而"钻奖励模型的空子"（reward hacking）；二是约束分布漂移，避免模型遗忘 SFT 学到的语言能力、退化成乱码。$\beta$ 越大越保守。值得注意的是，[DPO](/dpo/dpo) 家族正是发现这一目标存在闭式最优解，从而绕过显式 RL，直接在偏好数据上做监督式优化——这是与本版块平行的另一条技术路线。
 
@@ -83,6 +83,7 @@ timeline
 
 - [Reward Model](/rlhf/reward-model)：奖励从哪里来，以及它的种种坑（reward hacking、长度偏置、ORM vs PRM）
 - 算法演化：[PPO](/rlhf/ppo) → [GRPO](/rlhf/grpo) → [DAPO](/rlhf/dapo) / [GSPO](/rlhf/gspo) → [RLOO](/rlhf/rloo) → [REINFORCE++](/rlhf/reinforce-plus-plus)
+- 工程视角：[训练循环机制](/rlhf/training-loop)——一个 batch 里 rollout / learning 两阶段怎么走、policy 参数在哪一步被更新（PPO/GRPO 共通骨架）
 - 平行路线：[DPO 家族](/dpo/)，符号体系见 [记号约定](/guide/notation)
 
 ## 参考文献

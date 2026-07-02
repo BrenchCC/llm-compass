@@ -46,6 +46,9 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
           { text: '全景速览', link: '/' },
           { text: '如何使用本知识库', link: '/guide/' },
           { text: '符号约定', link: '/guide/notation' },
+          { text: '信息论基础', link: '/guide/info-theory' },
+          { text: 'GPU 基础', link: '/guide/gpu' },
+          { text: 'A/B 实验与统计', link: '/guide/ab-testing' },
           { text: '前沿博客与资源', link: '/guide/blogs' }
         ]
       },
@@ -141,6 +144,7 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
           { text: 'Reward Model', link: '/rlhf/reward-model' },
           { text: 'PPO', link: '/rlhf/ppo' },
           { text: 'GRPO', link: '/rlhf/grpo' },
+          { text: '训练循环机制', link: '/rlhf/training-loop' },
           { text: 'DAPO', link: '/rlhf/dapo' },
           { text: 'GSPO', link: '/rlhf/gspo' },
           { text: 'RLOO', link: '/rlhf/rloo' },
@@ -205,6 +209,10 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
         items: [
           { text: '总览', link: '/harness/' },
           { text: '执行循环与上下文管理', link: '/harness/agent-loop' },
+          { text: 'Prompt Engineering（提示工程）', link: '/harness/prompt-engineering' },
+          { text: 'Context Engineering（上下文工程）', link: '/harness/context-engineering' },
+          { text: 'Loop Engineering（循环工程）', link: '/harness/loop-engineering' },
+          { text: 'Harness Engineering（机器工程）', link: '/harness/harness-engineering' },
           { text: '沙箱与工具执行', link: '/harness/sandbox' },
           { text: '代表系统对比', link: '/harness/systems' },
           {
@@ -263,6 +271,10 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
               { text: 'OpenAI Deep Research', link: '/agent/deep-research/openai-deep-research' },
               { text: 'Tongyi DeepResearch（阿里）', link: '/agent/deep-research/tongyi-deepresearch' },
               { text: 'REDSearcher（小红书）', link: '/agent/deep-research/redsearcher' },
+              { text: 'Mind DeepResearch（理想）', link: '/agent/deep-research/mind-deepresearch' },
+              { text: 'Step-DeepResearch（阶跃）', link: '/agent/deep-research/step-deepresearch' },
+              { text: 'AgentDisCo（解耦+协作）', link: '/agent/deep-research/agentdisco' },
+              { text: 'DR-Rubric（深研造 RL 奖励）', link: '/agent/deep-research/dr-rubric' },
               { text: 'open-deep-research（HF）', link: '/agent/deep-research/open-deep-research' },
               { text: 'STORM / Co-STORM', link: '/agent/deep-research/storm' }
             ]
@@ -281,6 +293,7 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
             collapsed: true,
             items: [
               { text: '总览', link: '/skills/autoskill/' },
+              { text: 'Trace2Skill（轨迹蒸馏技能）', link: '/skills/autoskill/trace2skill' },
               { text: 'SkillOS（技能策展 RL）', link: '/skills/autoskill/skillos' },
               { text: 'SkillOpt（技能即权重优化）', link: '/skills/autoskill/skillopt' },
               { text: 'SkillOps（技能库工程化运维）', link: '/skills/autoskill/skillops' },
