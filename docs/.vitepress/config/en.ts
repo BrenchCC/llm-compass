@@ -21,10 +21,12 @@ export const en: LocaleSpecificConfig<DefaultTheme.Config> = {
         text: 'Agent',
         items: [
           { text: 'Harness', link: '/en/harness/' },
+          { text: 'Recursive Self-Improvement', link: '/en/rsi/' },
           { text: 'Agent', link: '/en/agent/' },
           { text: 'Skills', link: '/en/skills/' }
         ]
       },
+      { text: 'Research Notes', link: '/en/blog/' },
       { text: 'Guide', link: '/en/guide/' },
       { text: 'About', link: '/en/about' }
     ],
@@ -38,7 +40,8 @@ export const en: LocaleSpecificConfig<DefaultTheme.Config> = {
           { text: 'Notation', link: '/en/guide/notation' },
           { text: 'Information Theory Basics', link: '/en/guide/info-theory' },
           { text: 'GPU Basics', link: '/en/guide/gpu' },
-          { text: 'A/B Testing & Statistics', link: '/en/guide/ab-testing' }
+          { text: 'A/B Testing & Statistics', link: '/en/guide/ab-testing' },
+          { text: 'Research Notes', link: '/en/blog/' }
         ]
       },
       {
@@ -131,6 +134,13 @@ export const en: LocaleSpecificConfig<DefaultTheme.Config> = {
         ]
       },
       {
+        text: 'Evaluation',
+        collapsed: true,
+        items: [
+          { text: 'Rubric-Based Evaluation & Training', link: '/en/eval/rubrics' }
+        ]
+      },
+      {
         text: 'Harness',
         collapsed: true,
         items: [
@@ -138,6 +148,13 @@ export const en: LocaleSpecificConfig<DefaultTheme.Config> = {
           { text: 'Agent Loop & Context', link: '/en/harness/agent-loop' },
           { text: 'Sandbox & Tool Execution', link: '/en/harness/sandbox' },
           { text: 'Systems Compared', link: '/en/harness/systems' }
+        ]
+      },
+      {
+        text: 'Recursive Self-Improvement',
+        collapsed: true,
+        items: [
+          { text: 'Self-Improving Harnesses', link: '/en/rsi/' }
         ]
       },
       {
@@ -152,9 +169,16 @@ export const en: LocaleSpecificConfig<DefaultTheme.Config> = {
             collapsed: true,
             items: [
               { text: 'Overview', link: '/en/agent/deep-research/' },
+              { text: 'DR Tulu', link: '/en/agent/deep-research/dr-tulu' },
+              { text: 'MiroThinker', link: '/en/agent/deep-research/mirothinker' },
+              { text: 'MiroThinker-1.7 & H1', link: '/en/agent/deep-research/mirothinker-h1' },
+              { text: 'Marco DeepResearch', link: '/en/agent/deep-research/marco-deepresearch' },
               { text: 'Mind DeepResearch (Li Auto)', link: '/en/agent/deep-research/mind-deepresearch' },
               { text: 'AgentDisCo', link: '/en/agent/deep-research/agentdisco' },
-              { text: 'DR-Rubric', link: '/en/agent/deep-research/dr-rubric' }
+              { text: 'DR-Rubric', link: '/en/agent/deep-research/dr-rubric' },
+              { text: 'QUEST', link: '/en/agent/deep-research/quest' },
+              { text: 'Co-ReAct', link: '/en/agent/deep-research/co-react' },
+              { text: 'Apodex-1.0', link: '/en/agent/deep-research/apodex' }
             ]
           },
           { text: 'Multi-Agent', link: '/en/agent/multi-agent' }

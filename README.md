@@ -24,6 +24,7 @@ Agent         Tool Use 训练 · 多智能体
               ├ 代表性 Agent 框架：LangChain · LangGraph · LlamaIndex · AutoGen · CrewAI · MetaGPT · Claude Agent SDK · Claude Code · Codex · OpenClaw · Hermes
               └ Deep Research：OpenAI Deep Research · open-deep-research(HF) · STORM/Co-STORM
 Skills        Agent Skills 体系 · 技能设计与评测 · AutoSkill 技能自迭代 · 与 RAG/微调对比
+研究博客       Deep Research · Rubric 评测 · RSI / Harness 自我改进
 ```
 
 开源模型以技术报告 / 论文为准，闭源模型以官方博客 / 模型卡为准。
@@ -44,7 +45,7 @@ push 到 `main` 分支后，GitHub Actions 会自动构建并部署到 GitHub Pa
 - **目录 = URL = 侧边栏分组**：每个算法版块一个顶层目录（如 `docs/dpo/`），版块内每个算法一个 `.md` 文件，版块必有 `index.md` 总览页（含家族演化 Mermaid 图与变体对比表）。
 - **文件命名**：小写连字符，即 URL 路径（`reinforce-plus-plus.md` → `/rlhf/reinforce-plus-plus`）。
 - **站内链接**：写不含 base 的绝对路径（如 `/dpo/dpo`），**不要**手写 `/llm-compass/` 前缀。
-- **数学公式**：`$...$` 行内、`$$...$$` 块级，记号遵循 [符号约定](docs/guide/notation.md)。
+- **数学公式**：`$...$` 行内、块级公式使用 fenced `math` 代码块，记号遵循 [符号约定](docs/guide/notation.md)。
 - **图表**：Mermaid 代码块直接写在 md 中。
 
 ### 算法页标准结构
@@ -73,3 +74,7 @@ push 到 `main` 分支后，GitHub Actions 会自动构建并部署到 GitHub Pa
 ## License
 
 代码采用 [MIT](LICENSE) 许可；文档内容采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 许可。
+
+## 致谢
+
+研究博客中的部分资料整理自 [zhoujx4/llm-atlas](https://github.com/zhoujx4/llm-atlas)，已按 CC BY-SA 4.0 保留署名并以相同方式共享；站点品牌、导航结构与博客页面设计由本仓库独立维护。

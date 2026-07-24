@@ -1,7 +1,12 @@
 <script setup lang="ts">
 const links = [
-  { text: '小红书', href: 'https://www.xiaohongshu.com/user/profile/64ccf1d6000000000b00a502' },
-  { text: 'GitHub', href: 'https://github.com/BrenchCC' }
+  { text: '研究博客', href: '/llm-compass/blog/', external: false },
+  {
+    text: '小红书',
+    href: 'https://www.xiaohongshu.com/user/profile/64ccf1d6000000000b00a502',
+    external: true
+  },
+  { text: 'GitHub', href: 'https://github.com/BrenchCC', external: true }
 ]
 </script>
 
@@ -13,8 +18,8 @@ const links = [
           v-for="l in links"
           :key="l.href"
           :href="l.href"
-          target="_blank"
-          rel="noopener noreferrer"
+          :target="l.external ? '_blank' : undefined"
+          :rel="l.external ? 'noopener noreferrer' : undefined"
           >{{ l.text }}</a
         >
       </p>

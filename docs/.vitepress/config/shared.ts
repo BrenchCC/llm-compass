@@ -31,7 +31,19 @@ export const shared: UserConfig<DefaultTheme.Config> = {
     ]
   ],
   markdown: {
-    math: true
+    math: true,
+    config(md) {
+      md.core.ruler.after('block', 'github-fenced-math', (state) => {
+        for (const token of state.tokens) {
+          if (token.type === 'fence' && token.info.trim() === 'math') {
+            token.type = 'math_block'
+            token.tag = 'math'
+            token.nesting = 0
+            token.markup = '```'
+          }
+        }
+      })
+    }
   },
   themeConfig: {
     logo: '/favicon.svg',

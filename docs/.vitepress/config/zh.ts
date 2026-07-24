@@ -31,10 +31,12 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
         text: 'Agent',
         items: [
           { text: 'Harness', link: '/harness/' },
+          { text: 'RSI 递归自我改进', link: '/rsi/' },
           { text: 'Agent', link: '/agent/' },
           { text: 'Skills', link: '/skills/' }
         ]
       },
+      { text: '研究博客', link: '/blog/' },
       { text: '导读', link: '/guide/' },
       { text: '关于', link: '/about' }
     ],
@@ -49,7 +51,8 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
           { text: '信息论基础', link: '/guide/info-theory' },
           { text: 'GPU 基础', link: '/guide/gpu' },
           { text: 'A/B 实验与统计', link: '/guide/ab-testing' },
-          { text: '前沿博客与资源', link: '/guide/blogs' }
+          { text: '前沿博客与资源', link: '/guide/blogs' },
+          { text: '研究博客', link: '/blog/' }
         ]
       },
       {
@@ -200,7 +203,8 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
           { text: '总览', link: '/eval/' },
           { text: '基准与数据污染', link: '/eval/benchmarks' },
           { text: 'LLM-as-judge', link: '/eval/llm-as-judge' },
-          { text: 'Arena / Elo 与人类偏好', link: '/eval/arena' }
+          { text: 'Arena / Elo 与人类偏好', link: '/eval/arena' },
+          { text: 'Rubric 化评测与训练', link: '/eval/rubrics' }
         ]
       },
       {
@@ -226,6 +230,13 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
               { text: 'AI co-scientist', link: '/harness/auto-agents/ai-co-scientist' }
             ]
           }
+        ]
+      },
+      {
+        text: 'RSI 递归自我改进',
+        collapsed: true,
+        items: [
+          { text: 'Harness 自我改进', link: '/rsi/' }
         ]
       },
       {
@@ -270,11 +281,18 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
               { text: '总览', link: '/agent/deep-research/' },
               { text: 'OpenAI Deep Research', link: '/agent/deep-research/openai-deep-research' },
               { text: 'Tongyi DeepResearch（阿里）', link: '/agent/deep-research/tongyi-deepresearch' },
+              { text: 'DR Tulu（华盛顿大学 / AI2）', link: '/agent/deep-research/dr-tulu' },
+              { text: 'MiroThinker（MiroMind）', link: '/agent/deep-research/mirothinker' },
               { text: 'REDSearcher（小红书）', link: '/agent/deep-research/redsearcher' },
+              { text: 'MiroThinker-1.7 & H1', link: '/agent/deep-research/mirothinker-h1' },
+              { text: 'Marco DeepResearch（阿里国际）', link: '/agent/deep-research/marco-deepresearch' },
               { text: 'Mind DeepResearch（理想）', link: '/agent/deep-research/mind-deepresearch' },
               { text: 'Step-DeepResearch（阶跃）', link: '/agent/deep-research/step-deepresearch' },
               { text: 'AgentDisCo（解耦+协作）', link: '/agent/deep-research/agentdisco' },
               { text: 'DR-Rubric（深研造 RL 奖励）', link: '/agent/deep-research/dr-rubric' },
+              { text: 'QUEST（OSU NLP）', link: '/agent/deep-research/quest' },
+              { text: 'Co-ReAct（通义 + 清华）', link: '/agent/deep-research/co-react' },
+              { text: 'Apodex-1.0', link: '/agent/deep-research/apodex' },
               { text: 'open-deep-research（HF）', link: '/agent/deep-research/open-deep-research' },
               { text: 'STORM / Co-STORM', link: '/agent/deep-research/storm' }
             ]
