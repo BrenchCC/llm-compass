@@ -40,6 +40,28 @@ npm run docs:preview  # 以生产路径预览构建产物
 
 push 到 `main` 分支后，GitHub Actions 会自动构建并部署到 GitHub Pages（仓库 Settings → Pages → Source 需选择 **GitHub Actions**）。
 
+## 飞书知识库同步
+
+仓库可将 `docs/` 下的中英文内容单向同步到私有飞书知识空间。GitHub `main` 是唯一内容源；飞书页面中的人工编辑会在下一次同步时被覆盖，GitHub 删除的页面会移入知识库的归档节点。
+
+首次初始化：
+
+```bash
+npm run feishu:bootstrap -- --app-id <FEISHU_APP_ID> --apply
+```
+
+把命令返回的空间 ID 和根节点 token 分别配置为 GitHub Variables `FEISHU_SPACE_ID`、`FEISHU_ROOT_NODE_TOKEN`，并将应用 ID、应用密钥配置为 GitHub Secrets `FEISHU_APP_ID`、`FEISHU_APP_SECRET`。随后在 Actions 中手动运行一次 `Feishu Wiki Sync`，选择 `full`。
+
+本地检查与同步：
+
+```bash
+npm run feishu:sync:dry-run
+npm run feishu:sync -- --mode incremental
+npm run feishu:sync -- --mode full
+```
+
+同步需要飞书应用具备 Wiki 节点、Docx 内容、Drive 上传和节点移动权限。持续同步使用 bot 身份，首次创建知识空间和授予应用管理员权限使用 user 身份。
+
 ## 内容组织约定
 
 - **目录 = URL = 侧边栏分组**：每个算法版块一个顶层目录（如 `docs/dpo/`），版块内每个算法一个 `.md` 文件，版块必有 `index.md` 总览页（含家族演化 Mermaid 图与变体对比表）。
