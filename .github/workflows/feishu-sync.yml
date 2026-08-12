@@ -1,0 +1,73 @@
+name: Feishu Wiki Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**/*.md"
+      - "docs/public/**"
+      - "scripts/feishu-sync/**"
+      - "test/feishu-sync.test.mjs"
+      - ".github/workflows/feishu-sync.yml"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Sync mode
+        required: true
+        default: incremental
+        type: choice
+        options:
+          - incremental
+          - full
+
+permissions:
+  contents: read
+
+concurrency:
+  group: feishu-wiki-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      FEISHU_ROOT_NODE_TOKEN: ${{ vars.FEISHU_ROOT_NODE_TOKEN }}
+      FEISHU_SPACE_ID: ${{ vars.FEISHU_SPACE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Test sync logic
+        run: npm run test:feishu-sync
+
+      - name: Install pinned Feishu CLI
+        run: npm install --global @larksuite/cli@1.0.86
+
+      - name: Configure Feishu bot identity
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+        run: printf '%s' "$FEISHU_APP_SECRET" | lark-cli config init --app-id "$FEISHU_APP_ID" --app-secret-stdin --brand feishu
+
+      - name: Sync knowledge base
+        env:
+          SYNC_MODE: ${{ github.event.inputs.mode || 'incremental' }}
+        run: npm run feishu:sync -- --mode "$SYNC_MODE"
+
+      - name: Upload sync report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: feishu-sync-report-${{ github.run_id }}
+          path: .feishu-sync-tmp/sync-report.json
+          if-no-files-found: warn
+          retention-days: 30
