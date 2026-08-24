@@ -6,6 +6,7 @@ on:
     paths:
       - "docs/**/*.md"
       - "docs/public/**"
+      - "docs/.vitepress/config/*.ts"
       - "scripts/feishu-sync/**"
       - "test/feishu-sync.test.mjs"
       - ".github/workflows/feishu-sync.yml"

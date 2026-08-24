@@ -6,8 +6,11 @@ import {
   buildContentTree,
   buildRenameMap,
   computeRenderHash,
+  extractSidebarLinks,
   parseMarkdownDocument,
+  planSiblingReorder,
   planStaleRoots,
+  releaseDuplicateMappings,
   transformMarkdown
 } from "../scripts/feishu-sync/lib.mjs"
 
@@ -31,13 +34,14 @@ test("parseMarkdownDocument prefers frontmatter and strips the leading H1", () =
   assert.equal(parsed.body.trim(), "正文")
 })
 
-test("buildContentTree maps index pages to directories and creates missing directory nodes", () => {
+test("buildContentTree creates independent roots and follows sidebar order", () => {
   const tree = buildContentTree([
     {sourcePath: "docs/index.md", title: "全景速览"},
     {sourcePath: "docs/about.md", title: "关于"},
     {sourcePath: "docs/en/index.md", title: "At a Glance"},
+    {sourcePath: "docs/en/harness/index.md", title: "index"},
     {sourcePath: "docs/en/eval/rubrics.md", title: "Rubrics"}
-  ])
+  ], ["/", "/en/", "/en/harness/", "/en/eval/rubrics"])
 
   assert.deepEqual(
     tree.map(({key, parentKey, sourcePath, title, synthetic}) => ({
@@ -56,6 +60,13 @@ test("buildContentTree maps index pages to directories and creates missing direc
         synthetic: false
       },
       {
+        key: "docs/en",
+        parentKey: null,
+        sourcePath: "docs/en/index.md",
+        title: "LLM Compass English",
+        synthetic: false
+      },
+      {
         key: "docs/about",
         parentKey: "docs",
         sourcePath: "docs/about.md",
@@ -63,10 +74,10 @@ test("buildContentTree maps index pages to directories and creates missing direc
         synthetic: false
       },
       {
-        key: "docs/en",
-        parentKey: "docs",
-        sourcePath: "docs/en/index.md",
-        title: "English",
+        key: "docs/en/harness",
+        parentKey: "docs/en",
+        sourcePath: "docs/en/harness/index.md",
+        title: "Harness",
         synthetic: false
       },
       {
@@ -85,6 +96,60 @@ test("buildContentTree maps index pages to directories and creates missing direc
       }
     ]
   )
+})
+
+test("extractSidebarLinks reads only sidebar links in source order", () => {
+  const configSource = [
+    "nav: [{link: '/nav-only'}],",
+    "sidebar: [",
+    "  {items: [{link: '/guide/'}, {link: '/base-models/'}]},",
+    "  // {link: '/commented-out'}",
+    "  {items: [{link: '/agent/'}]}",
+    "]"
+  ].join("\n")
+
+  assert.deepEqual(
+    extractSidebarLinks(configSource),
+    ["/guide/", "/base-models/", "/agent/"]
+  )
+})
+
+test("planSiblingReorder keeps the longest achievable desired prefix", () => {
+  assert.deepEqual(
+    planSiblingReorder(["c", "a", "b", "d"], ["a", "b", "c", "d"]),
+    ["c", "d"]
+  )
+  assert.deepEqual(
+    planSiblingReorder(["a", "b", "c"], ["a", "b", "c"]),
+    []
+  )
+  assert.throws(
+    () => planSiblingReorder(["a", "manual"], ["a", "b"]),
+    /exactly match managed siblings/
+  )
+})
+
+test("releaseDuplicateMappings keeps one active owner and releases duplicate claims", () => {
+  const pages = {
+    "docs/en/harness": {nodeToken: "shared"},
+    "docs/en/inference": {nodeToken: "shared"},
+    "docs/en/skills": {nodeToken: "shared"},
+    "docs/stale": {nodeToken: "shared"}
+  }
+  const tree = [
+    {key: "docs/en/harness"},
+    {key: "docs/en/inference"},
+    {key: "docs/en/skills"}
+  ]
+
+  assert.deepEqual(releaseDuplicateMappings(pages, tree), [
+    {key: "docs/en/inference", nodeToken: "shared", ownerKey: "docs/en/harness"},
+    {key: "docs/en/skills", nodeToken: "shared", ownerKey: "docs/en/harness"},
+    {key: "docs/stale", nodeToken: "shared", ownerKey: "docs/en/harness"}
+  ])
+  assert.deepEqual(pages, {
+    "docs/en/harness": {nodeToken: "shared"}
+  })
 })
 
 test("transformMarkdown converts VitePress syntax, resources, formulas, diagrams, and links", () => {
@@ -123,9 +188,10 @@ test("transformMarkdown converts VitePress syntax, resources, formulas, diagrams
     nodeMap: new Map([["docs/guide/notation.md", {nodeToken: "wikcnNotation"}]])
   })
 
-  assert.doesNotMatch(result.content, /^---/m)
+  assert.equal(result.content.startsWith("---"), false)
   assert.doesNotMatch(result.content, /^# Demo/m)
-  assert.match(result.content, /GitHub 自动同步/)
+  assert.doesNotMatch(result.content, /自动同步/)
+  assert.match(result.content, /内容来源：\[GitHub · docs\/demo\.md\]/)
   assert.match(result.content, /> \*\*💡 前置阅读\*\*/)
   assert.match(result.content, /https:\/\/feishu\.cn\/wiki\/wikcnNotation/)
   assert.match(result.content, /规模 \\<50k/)
@@ -247,4 +313,58 @@ test("LarkClient retries transient transport failures", async () => {
 
   assert.equal(data.result, "success")
   assert.deepEqual(delays, [1000])
+})
+
+test("LarkClient retries Feishu rpc failures", async () => {
+  const responses = [
+    {
+      code: 1,
+      stdout: "",
+      stderr: JSON.stringify({
+        ok: false,
+        error: {message: "rpc fail"}
+      })
+    },
+    {
+      code: 0,
+      stdout: JSON.stringify({ok: true, data: {node_token: "wikcnRecovered"}}),
+      stderr: ""
+    }
+  ]
+  const client = new LarkClient({
+    execute: async () => responses.shift(),
+    sleep: async () => {},
+    maxAttempts: 3
+  })
+
+  const data = await client.call(["wiki", "+move", "--node-token", "wikcnRecovered"])
+
+  assert.equal(data.node_token, "wikcnRecovered")
+})
+
+test("LarkClient retries Feishu OAuth timeouts", async () => {
+  const responses = [
+    {
+      code: 1,
+      stdout: "",
+      stderr: JSON.stringify({
+        ok: false,
+        error: {message: "request canceled (Client.Timeout exceeded while awaiting headers)"}
+      })
+    },
+    {
+      code: 0,
+      stdout: JSON.stringify({ok: true, data: {nodes: []}}),
+      stderr: ""
+    }
+  ]
+  const client = new LarkClient({
+    execute: async () => responses.shift(),
+    sleep: async () => {},
+    maxAttempts: 3
+  })
+
+  const data = await client.call(["wiki", "+node-list", "--space-id", "demo"])
+
+  assert.deepEqual(data.nodes, [])
 })

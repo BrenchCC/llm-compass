@@ -104,7 +104,7 @@ function sourcePathToKey(sourcePath) {
 }
 
 function parentKeyFor(key) {
-  if (key === "docs") {
+  if (key === "docs" || key === "docs/en") {
     return null
   }
   return path.posix.dirname(key)
@@ -114,15 +114,96 @@ function treeDepth(key) {
   return key.split("/").length
 }
 
-export function buildContentTree(pages) {
+export function extractSidebarLinks(configSource) {
+  const propertyMatch = /\bsidebar\s*:\s*\[/.exec(configSource)
+  if (!propertyMatch) {
+    throw new Error("VitePress config does not contain a sidebar array")
+  }
+
+  const arrayStart = propertyMatch.index + propertyMatch[0].lastIndexOf("[")
+  let arrayEnd = -1
+  let depth = 0
+  let quote = ""
+  let escaped = false
+  let lineComment = false
+  let blockComment = false
+  for (let index = arrayStart; index < configSource.length; index += 1) {
+    const character = configSource[index]
+    const nextCharacter = configSource[index + 1]
+    if (lineComment) {
+      if (character === "\n") {
+        lineComment = false
+      }
+      continue
+    }
+    if (blockComment) {
+      if (character === "*" && nextCharacter === "/") {
+        blockComment = false
+        index += 1
+      }
+      continue
+    }
+    if (quote) {
+      if (escaped) {
+        escaped = false
+      } else if (character === "\\") {
+        escaped = true
+      } else if (character === quote) {
+        quote = ""
+      }
+      continue
+    }
+    if (character === "/" && nextCharacter === "/") {
+      lineComment = true
+      index += 1
+      continue
+    }
+    if (character === "/" && nextCharacter === "*") {
+      blockComment = true
+      index += 1
+      continue
+    }
+    if (new Set(["'", "\"", "`"]).has(character)) {
+      quote = character
+      continue
+    }
+    if (character === "[") {
+      depth += 1
+    } else if (character === "]") {
+      depth -= 1
+      if (depth === 0) {
+        arrayEnd = index
+        break
+      }
+    }
+  }
+  if (arrayEnd < 0) {
+    throw new Error("VitePress sidebar array is not balanced")
+  }
+
+  const sidebarSource = configSource.slice(arrayStart, arrayEnd + 1)
+  const withoutComments = sidebarSource
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "")
+  return [...withoutComments.matchAll(/\blink\s*:\s*(['"])(.*?)\1/g)]
+    .map((match) => match[2])
+}
+
+export function buildContentTree(pages, navigationLinks = []) {
   const nodes = new Map()
   for (const page of pages) {
     const key = sourcePathToKey(page.sourcePath)
     let title = page.title
+    if (
+      path.posix.basename(page.sourcePath) === "index.md" &&
+      title.trim().toLowerCase() === "index"
+    ) {
+      title = humanizeDirectory(path.posix.basename(path.posix.dirname(page.sourcePath)))
+    }
     if (key === "docs") {
       title = "LLM Compass"
     } else if (key === "docs/en") {
-      title = "English"
+      title = "LLM Compass English"
     }
     nodes.set(key, {
       key,
@@ -152,10 +233,57 @@ export function buildContentTree(pages) {
     }
   }
 
-  return [...nodes.values()].sort((left, right) => {
+  const unorderedTree = [...nodes.values()]
+  const routeMap = buildRouteMap(unorderedTree)
+  const orderByKey = new Map()
+  for (let index = 0; index < navigationLinks.length; index += 1) {
+    const link = navigationLinks[index].split(/[?#]/, 1)[0]
+    const sourcePath = routeMap.get(link) || routeMap.get(link.replace(/\/$/, ""))
+    if (!sourcePath) {
+      continue
+    }
+    let key = sourcePathToKey(sourcePath)
+    while (key && key !== ".") {
+      orderByKey.set(key, Math.min(orderByKey.get(key) ?? Infinity, index))
+      key = parentKeyFor(key)
+    }
+  }
+  for (const node of unorderedTree) {
+    node.order = orderByKey.get(node.key) ?? Infinity
+  }
+
+  return unorderedTree.sort((left, right) => {
     const depthDifference = treeDepth(left.key) - treeDepth(right.key)
-    return depthDifference || left.key.localeCompare(right.key, "en")
+    const orderDifference = left.order - right.order
+    return depthDifference || orderDifference || left.key.localeCompare(right.key, "en")
   })
+}
+
+export function planSiblingReorder(currentTokens, desiredTokens) {
+  if (new Set(currentTokens).size !== currentTokens.length) {
+    throw new Error("Current sibling list contains duplicate node tokens")
+  }
+  if (new Set(desiredTokens).size !== desiredTokens.length) {
+    throw new Error("Desired sibling list contains duplicate node tokens")
+  }
+  if (
+    currentTokens.length !== desiredTokens.length ||
+    currentTokens.some((token) => !desiredTokens.includes(token))
+  ) {
+    throw new Error("Current siblings do not exactly match managed siblings")
+  }
+
+  let currentIndex = 0
+  let retainedPrefixLength = 0
+  for (const desiredToken of desiredTokens) {
+    const foundIndex = currentTokens.indexOf(desiredToken, currentIndex)
+    if (foundIndex < 0) {
+      break
+    }
+    retainedPrefixLength += 1
+    currentIndex = foundIndex + 1
+  }
+  return desiredTokens.slice(retainedPrefixLength)
 }
 
 export function buildRouteMap(tree) {
@@ -359,11 +487,7 @@ function normalizeMermaid(content) {
 export function transformMarkdown({source, sourcePath, routeMap, nodeMap}) {
   const parsed = parseMarkdownDocument(sourcePath, source)
   const lines = parsed.body.split("\n")
-  const output = [
-    "> **🔄 GitHub 自动同步**",
-    `> 本页由 [${sourcePath}](https://github.com/${GITHUB_REPOSITORY}/blob/main/${sourcePath}) 单向同步；请在 GitHub 修改，飞书人工编辑会在下次同步时被覆盖。`,
-    ""
-  ]
+  const output = []
   const assets = new Set()
   const mermaidFiles = []
   const warnings = []
@@ -426,6 +550,13 @@ export function transformMarkdown({source, sourcePath, routeMap, nodeMap}) {
     output.push(transformed)
   }
 
+  output.push(
+    "",
+    "---",
+    "",
+    `_内容来源：[GitHub · ${sourcePath}](https://github.com/${GITHUB_REPOSITORY}/blob/main/${sourcePath})_`
+  )
+
   return {
     assets: [...assets].sort(),
     content: output.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n",
@@ -474,6 +605,36 @@ export function planStaleRoots(statePages, currentKeys) {
       return true
     })
     .sort()
+}
+
+export function releaseDuplicateMappings(pages, tree) {
+  const currentKeys = new Set(tree.map((node) => node.key))
+  const keysByToken = new Map()
+  for (const [key, entry] of Object.entries(pages)) {
+    if (!entry?.nodeToken) {
+      continue
+    }
+    const keys = keysByToken.get(entry.nodeToken) || []
+    keys.push(key)
+    keysByToken.set(entry.nodeToken, keys)
+  }
+
+  const released = []
+  for (const [nodeToken, keys] of keysByToken) {
+    if (keys.length < 2) {
+      continue
+    }
+    const activeKeys = keys.filter((key) => currentKeys.has(key)).sort()
+    const ownerKey = activeKeys[0] || keys.sort()[0]
+    for (const key of keys) {
+      if (key === ownerKey) {
+        continue
+      }
+      delete pages[key]
+      released.push({key, nodeToken, ownerKey})
+    }
+  }
+  return released
 }
 
 function defaultSleep(milliseconds) {
@@ -539,7 +700,7 @@ function isTransientFailure(envelope, stderr) {
     envelope?.error?.hint,
     stderr
   ].filter(Boolean).join("\n")
-  return /\bEOF\b|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up|connection reset|network is unreachable|TLS handshake timeout|context deadline exceeded|service unavailable|bad gateway|gateway timeout/i.test(detail)
+  return /\bEOF\b|\brpc fail\b|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up|connection reset|network is unreachable|request canceled|timeout exceeded|TLS handshake timeout|context deadline exceeded|service unavailable|bad gateway|gateway timeout/i.test(detail)
 }
 
 export class LarkCliError extends Error {

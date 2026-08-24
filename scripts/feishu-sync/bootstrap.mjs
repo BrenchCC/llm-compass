@@ -3,7 +3,7 @@ import process from "node:process"
 import {LarkClient} from "./lib.mjs"
 
 const SPACE_NAME = "LLM Compass"
-const SPACE_DESCRIPTION = "由 GitHub BrenchCC/llm-compass 的 main 分支自动同步，GitHub 为唯一内容源"
+const SPACE_DESCRIPTION = "系统梳理大语言模型训练、推理、评测与智能体技术，提供从基础概念到工程实践的结构化知识指南。"
 
 function parseArgs(argv) {
   const args = {

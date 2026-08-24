@@ -4,6 +4,8 @@
 
 **在线阅读**：https://BrenchCC.github.io/llm-compass/ （中文 | [English](https://BrenchCC.github.io/llm-compass/en/)）
 
+**飞书知识库**：[中文](https://feishu.cn/wiki/LkFVwh9CJisP9gkpofkcWGjKnEe) | [English](https://feishu.cn/wiki/OIERwuILyi5Y7SkeXILc0Fhrngb)
+
 收录原则：**只收讨论度高、用得最多的出名算法**，不堆砌冷门变体，也不堆砌易过期的 benchmark 数字。
 
 ## 知识体系
@@ -42,7 +44,7 @@ push 到 `main` 分支后，GitHub Actions 会自动构建并部署到 GitHub Pa
 
 ## 飞书知识库同步
 
-仓库可将 `docs/` 下的中英文内容单向同步到私有飞书知识空间。GitHub `main` 是唯一内容源；飞书页面中的人工编辑会在下一次同步时被覆盖，GitHub 删除的页面会移入知识库的归档节点。
+仓库可将 `docs/` 下的内容同步到私有飞书知识空间。中文和英文分别维护为一级文档 `LLM Compass` 与 `LLM Compass English`，各自的子页面顺序跟随 `docs/.vitepress/config/zh.ts` 和 `en.ts` 中的网页版侧边栏；未列入侧边栏的页面排在对应目录末尾。GitHub 删除的页面会移入系统目录中的归档节点。
 
 首次初始化：
 
@@ -60,7 +62,7 @@ npm run feishu:sync -- --mode incremental
 npm run feishu:sync -- --mode full
 ```
 
-同步需要飞书应用具备 Wiki 节点、Docx 内容、Drive 上传和节点移动权限。持续同步使用 bot 身份，首次创建知识空间和授予应用管理员权限使用 user 身份。
+同步需要飞书应用具备 Wiki 节点、Docx 内容、Drive 上传和节点移动权限。持续同步使用 bot 身份，首次创建知识空间和授予应用管理员权限使用 user 身份。知识空间简介只介绍内容用途；页面正文末尾仅保留 GitHub 源文件引用。
 
 ## 内容组织约定
 
@@ -96,7 +98,3 @@ npm run feishu:sync -- --mode full
 ## License
 
 代码采用 [MIT](LICENSE) 许可；文档内容采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 许可。
-
-## 致谢
-
-研究博客中的部分资料整理自 [zhoujx4/llm-atlas](https://github.com/zhoujx4/llm-atlas)，已按 CC BY-SA 4.0 保留署名并以相同方式共享；站点品牌、导航结构与博客页面设计由本仓库独立维护。

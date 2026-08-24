@@ -10,15 +10,23 @@ import {
   buildRenameMap,
   buildRouteMap,
   computeRenderHash,
+  extractSidebarLinks,
   parseMarkdownDocument,
+  planSiblingReorder,
   planStaleRoots,
+  releaseDuplicateMappings,
   transformMarkdown
 } from "./lib.mjs"
 
 const ARCHIVE_TITLE = "归档（GitHub 已移除）"
+const ENGLISH_ROOT_TITLE = "LLM Compass English"
 const STATE_TITLE = "⚙️ 同步状态（请勿编辑）"
+const SYSTEM_TITLE = "⚙️ 系统（请勿编辑）"
 const TEMP_ROOT = ".feishu-sync-tmp"
 const STATE_SCHEMA_VERSION = 1
+
+let executionJournal = null
+let executionJournalHistory = []
 
 function parseArgs(argv) {
   const args = {dryRun: false, mode: "incremental"}
@@ -76,12 +84,108 @@ async function readTrackedPages() {
   return pages
 }
 
+async function readSidebarLinks() {
+  const configPaths = [
+    "docs/.vitepress/config/zh.ts",
+    "docs/.vitepress/config/en.ts"
+  ]
+  const links = []
+  for (const configPath of configPaths) {
+    links.push(...extractSidebarLinks(await fs.readFile(configPath, "utf8")))
+  }
+  return links
+}
+
 async function writeTempFile(relativePath, content) {
   if (!relativePath.startsWith(`${TEMP_ROOT}/`)) {
     throw new Error(`Refusing to write outside ${TEMP_ROOT}: ${relativePath}`)
   }
   await fs.mkdir(path.dirname(relativePath), {recursive: true})
   await fs.writeFile(relativePath, content, "utf8")
+}
+
+async function readJsonIfPresent(relativePath, fallback) {
+  try {
+    return JSON.parse(await fs.readFile(relativePath, "utf8"))
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return fallback
+    }
+    throw error
+  }
+}
+
+async function prepareTempRoot() {
+  const initialSnapshot = await readJsonIfPresent(
+    `${TEMP_ROOT}/rollback-snapshot-initial.json`,
+    await readJsonIfPresent(`${TEMP_ROOT}/rollback-snapshot.json`, null)
+  )
+  const journalHistory = await readJsonIfPresent(
+    `${TEMP_ROOT}/execution-journal-history.json`,
+    []
+  )
+  const latestJournal = await readJsonIfPresent(
+    `${TEMP_ROOT}/execution-journal.json`,
+    []
+  )
+  executionJournalHistory = [...journalHistory, ...latestJournal]
+
+  await fs.rm(TEMP_ROOT, {force: true, recursive: true})
+  await fs.mkdir(TEMP_ROOT, {recursive: true})
+  if (initialSnapshot) {
+    await writeTempFile(
+      `${TEMP_ROOT}/rollback-snapshot-initial.json`,
+      `${JSON.stringify(initialSnapshot, null, 2)}\n`
+    )
+  }
+  if (executionJournalHistory.length > 0) {
+    await writeTempFile(
+      `${TEMP_ROOT}/execution-journal-history.json`,
+      `${JSON.stringify(executionJournalHistory, null, 2)}\n`
+    )
+  }
+}
+
+async function initializeRecoveryFiles(snapshot) {
+  executionJournal = []
+  await writeTempFile(
+    `${TEMP_ROOT}/rollback-snapshot.json`,
+    `${JSON.stringify(snapshot, null, 2)}\n`
+  )
+  await writeTempFile(
+    `${TEMP_ROOT}/execution-journal.json`,
+    `${JSON.stringify(executionJournal, null, 2)}\n`
+  )
+}
+
+async function journaledWrite(action, details, operation) {
+  const attemptedAt = new Date().toISOString()
+  try {
+    const result = await operation()
+    if (executionJournal) {
+      executionJournal.push({action, attemptedAt, details, status: "success"})
+      await writeTempFile(
+        `${TEMP_ROOT}/execution-journal.json`,
+        `${JSON.stringify(executionJournal, null, 2)}\n`
+      )
+    }
+    return result
+  } catch (error) {
+    if (executionJournal) {
+      executionJournal.push({
+        action,
+        attemptedAt,
+        details,
+        error: error.message,
+        status: "failed"
+      })
+      await writeTempFile(
+        `${TEMP_ROOT}/execution-journal.json`,
+        `${JSON.stringify(executionJournal, null, 2)}\n`
+      )
+    }
+    throw error
+  }
 }
 
 function emptyState() {
@@ -146,82 +250,106 @@ function wikiUrl(nodeToken) {
 }
 
 async function listChildren(client, spaceId, parentNodeToken) {
-  const result = await client.call([
+  const args = [
     "wiki",
     "+node-list",
     "--space-id",
     spaceId,
-    "--parent-node-token",
-    parentNodeToken,
     "--page-all",
     "--page-limit",
     "0",
     "--as",
     "bot"
-  ])
+  ]
+  if (parentNodeToken) {
+    args.splice(4, 0, "--parent-node-token", parentNodeToken)
+  }
+  const result = await client.call(args)
   return result.nodes || []
 }
 
 async function createNode(client, spaceId, parentNodeToken, title, identity = "bot") {
-  return client.call([
+  const args = [
     "wiki",
     "+node-create",
     "--space-id",
     spaceId,
-    "--parent-node-token",
-    parentNodeToken,
     "--obj-type",
     "docx",
     "--title",
     title,
     "--as",
     identity
-  ])
+  ]
+  if (parentNodeToken) {
+    args.splice(4, 0, "--parent-node-token", parentNodeToken)
+  }
+  return journaledWrite(
+    "create_node",
+    {parentNodeToken: parentNodeToken || null, spaceId, title},
+    () => client.call(args)
+  )
 }
 
 async function renameNode(client, nodeToken, title) {
-  return client.call([
-    "drive",
-    "+update-title",
-    "--url",
-    wikiUrl(nodeToken),
-    "--title",
-    title,
-    "--as",
-    "bot"
-  ])
+  return journaledWrite(
+    "rename_node",
+    {nodeToken, title},
+    () => client.call([
+      "drive",
+      "+update-title",
+      "--url",
+      wikiUrl(nodeToken),
+      "--title",
+      title,
+      "--as",
+      "bot"
+    ])
+  )
 }
 
 async function moveNode(client, spaceId, nodeToken, parentNodeToken) {
-  return client.call([
+  const args = [
     "wiki",
     "+move",
     "--node-token",
     nodeToken,
     "--source-space-id",
     spaceId,
-    "--target-parent-token",
-    parentNodeToken,
+    "--target-space-id",
+    spaceId,
     "--as",
     "bot"
-  ])
+  ]
+  if (parentNodeToken) {
+    args.splice(-2, 0, "--target-parent-token", parentNodeToken)
+  }
+  return journaledWrite(
+    "move_node",
+    {nodeToken, parentNodeToken: parentNodeToken || null, spaceId},
+    () => client.call(args)
+  )
 }
 
 async function updateDocument(client, objToken, relativeContentPath) {
-  const result = await client.call([
-    "docs",
-    "+update",
-    "--doc",
-    objToken,
-    "--command",
-    "overwrite",
-    "--doc-format",
-    "markdown",
-    "--content",
-    `@./${relativeContentPath}`,
-    "--as",
-    "bot"
-  ])
+  const result = await journaledWrite(
+    "update_document",
+    {objToken, relativeContentPath},
+    () => client.call([
+      "docs",
+      "+update",
+      "--doc",
+      objToken,
+      "--command",
+      "overwrite",
+      "--doc-format",
+      "markdown",
+      "--content",
+      `@./${relativeContentPath}`,
+      "--as",
+      "bot"
+    ])
+  )
   if (result.result && !new Set(["success", "partial_success"]).has(result.result)) {
     throw new Error(`Document update failed for ${objToken}: ${result.result}`)
   }
@@ -244,13 +372,77 @@ async function fetchDocument(client, objToken) {
   return result.document?.content || ""
 }
 
-async function ensureHelperNode({client, children, parentNodeToken, spaceId, title}) {
+async function buildRollbackSnapshot({
+  client,
+  extraParentTokens = [],
+  rootChildren,
+  routeTree,
+  spaceId,
+  state
+}) {
+  const childOrderByParentToken = {
+    __space_root__: rootChildren.map((node) => node.node_token)
+  }
+  const parentKeys = new Set(
+    routeTree.map((node) => node.parentKey).filter(Boolean)
+  )
+  const parentTokens = new Set()
+  for (const parentToken of extraParentTokens) {
+    parentTokens.add(parentToken)
+  }
+  for (const parentKey of parentKeys) {
+    const parentToken = state.pages?.[parentKey]?.nodeToken
+    if (parentToken) {
+      parentTokens.add(parentToken)
+    }
+  }
+  for (const parentToken of parentTokens) {
+    const children = await listChildren(client, spaceId, parentToken)
+    childOrderByParentToken[parentToken] = children.map((node) => node.node_token)
+  }
+
+  return {
+    capturedAt: new Date().toISOString(),
+    childOrderByParentToken,
+    pages: Object.fromEntries(
+      Object.entries(state.pages || {}).map(([key, entry]) => [key, {
+        nodeToken: entry.nodeToken,
+        objToken: entry.objToken,
+        parentKey: entry.parentKey,
+        title: entry.title
+      }])
+    ),
+    spaceId
+  }
+}
+
+async function ensureHelperNode({
+  client,
+  children,
+  parentNodeToken,
+  sourceChildren = [],
+  spaceId,
+  title
+}) {
   const matches = children.filter((node) => node.title === title)
   if (matches.length > 1) {
     throw new Error(`Multiple helper nodes named ${title} exist under ${parentNodeToken}`)
   }
   if (matches.length === 1) {
     return matches[0]
+  }
+  const sourceMatches = sourceChildren.filter((node) => node.title === title)
+  if (sourceMatches.length > 1) {
+    throw new Error(`Multiple source helper nodes named ${title} exist`)
+  }
+  if (sourceMatches.length === 1) {
+    await moveNode(client, spaceId, sourceMatches[0].node_token, parentNodeToken)
+    const moved = {
+      ...sourceMatches[0],
+      parent_node_token: parentNodeToken
+    }
+    children.push(moved)
+    return moved
   }
   const created = await createNode(client, spaceId, parentNodeToken, title)
   children.push(created)
@@ -331,6 +523,7 @@ async function reconcileTopology({
   const pages = structuredClone(state.pages || {})
   const renameMap = findRenames(state.lastSyncedCommit, commit)
   applyRenameState(pages, routeTree, renameMap)
+  const releasedDuplicates = releaseDuplicateMappings(pages, routeTree)
   const childrenCache = new Map()
 
   pages.docs = {
@@ -348,30 +541,58 @@ async function reconcileTopology({
     await renameNode(client, rootDetails.node_token, "LLM Compass")
   }
 
+  async function childrenFor(parentNodeToken) {
+    const cacheKey = parentNodeToken || "__space_root__"
+    if (!childrenCache.has(cacheKey)) {
+      childrenCache.set(cacheKey, await listChildren(client, spaceId, parentNodeToken))
+    }
+    return childrenCache.get(cacheKey)
+  }
+
+  function clearChildrenCache() {
+    childrenCache.clear()
+  }
+
+  const reservedByToken = new Map(
+    Object.entries(pages)
+      .filter(([, entry]) => entry?.nodeToken)
+      .map(([key, entry]) => [entry.nodeToken, key])
+  )
+
   for (const node of routeTree) {
     if (node.key === "docs") {
       continue
     }
-    const parentEntry = pages[node.parentKey]
-    if (!parentEntry?.nodeToken) {
+    const parentEntry = node.parentKey ? pages[node.parentKey] : null
+    if (node.parentKey && !parentEntry?.nodeToken) {
       throw new Error(`Missing parent mapping for ${node.key}: ${node.parentKey}`)
     }
+    const parentNodeToken = parentEntry?.nodeToken || ""
 
     let entry = pages[node.key]
     if (!entry?.nodeToken) {
-      let children = childrenCache.get(parentEntry.nodeToken)
-      if (!children) {
-        children = await listChildren(client, spaceId, parentEntry.nodeToken)
-        childrenCache.set(parentEntry.nodeToken, children)
+      const children = await childrenFor(parentNodeToken)
+      let matches = children.filter((child) => {
+        const reservedKey = reservedByToken.get(child.node_token)
+        return child.title === node.title && (!reservedKey || reservedKey === node.key)
+      })
+      if (node.key === "docs/en" && matches.length === 0) {
+        const legacyChildren = await childrenFor(rootDetails.node_token)
+        matches = legacyChildren.filter((child) => {
+          const reservedKey = reservedByToken.get(child.node_token)
+          return (
+            new Set(["English", ENGLISH_ROOT_TITLE]).has(child.title) &&
+            (!reservedKey || reservedKey === node.key)
+          )
+        })
       }
-      const matches = children.filter((child) => child.title === node.title)
       if (matches.length > 1) {
         throw new Error(`Ambiguous existing nodes for ${node.key}: ${node.title}`)
       }
       const mappedNode = matches[0] || await createNode(
         client,
         spaceId,
-        parentEntry.nodeToken,
+        parentNodeToken,
         node.title
       )
       if (!matches[0]) {
@@ -379,13 +600,16 @@ async function reconcileTopology({
       }
       entry = {
         nodeToken: mappedNode.node_token,
-        objToken: mappedNode.obj_token
+        objToken: mappedNode.obj_token,
+        title: mappedNode.title
       }
+      reservedByToken.set(entry.nodeToken, node.key)
     }
 
-    if (entry.parentKey && entry.parentKey !== node.parentKey) {
-      await moveNode(client, spaceId, entry.nodeToken, parentEntry.nodeToken)
-      childrenCache.delete(parentEntry.nodeToken)
+    const desiredChildren = await childrenFor(parentNodeToken)
+    if (!desiredChildren.some((child) => child.node_token === entry.nodeToken)) {
+      await moveNode(client, spaceId, entry.nodeToken, parentNodeToken)
+      clearChildrenCache()
     }
     if (entry.title && entry.title !== node.title) {
       await renameNode(client, entry.nodeToken, node.title)
@@ -426,7 +650,76 @@ async function reconcileTopology({
     delete pages[staleKey]
   }
 
-  return {pages, renamed: renameMap.size, staleRoots}
+  return {
+    pages,
+    releasedDuplicates,
+    renamed: renameMap.size,
+    staleRoots
+  }
+}
+
+function compareTreeNodes(left, right) {
+  const orderDifference = left.order - right.order
+  return orderDifference || left.key.localeCompare(right.key, "en")
+}
+
+async function reconcileSiblingOrder({
+  archiveNode,
+  client,
+  englishRoot,
+  pages,
+  routeTree,
+  spaceId,
+  systemNode
+}) {
+  const childrenByParent = new Map()
+  for (const node of routeTree) {
+    if (!node.parentKey) {
+      continue
+    }
+    const siblings = childrenByParent.get(node.parentKey) || []
+    siblings.push(node)
+    childrenByParent.set(node.parentKey, siblings)
+  }
+
+  const report = {movedNodes: 0, reorderedParents: 0}
+  for (const [parentKey, siblings] of childrenByParent) {
+    const parentEntry = pages[parentKey]
+    if (!parentEntry?.nodeToken) {
+      throw new Error(`Missing parent mapping while ordering ${parentKey}`)
+    }
+    const orderedSiblings = siblings.sort(compareTreeNodes)
+    const desiredTokens = orderedSiblings.map((node) => pages[node.key].nodeToken)
+    if (parentKey === "docs") {
+      desiredTokens.push(systemNode.node_token)
+    }
+
+    const currentChildren = await listChildren(client, spaceId, parentEntry.nodeToken)
+    const currentTokens = currentChildren.map((node) => node.node_token)
+    const nodesToMove = planSiblingReorder(currentTokens, desiredTokens)
+    if (nodesToMove.length === 0) {
+      continue
+    }
+
+    const stagingNodeToken = parentKey === "docs"
+      ? englishRoot.nodeToken
+      : archiveNode.node_token
+    for (const nodeToken of nodesToMove) {
+      await moveNode(client, spaceId, nodeToken, stagingNodeToken)
+    }
+    for (const nodeToken of nodesToMove) {
+      await moveNode(client, spaceId, nodeToken, parentEntry.nodeToken)
+    }
+
+    const verifiedChildren = await listChildren(client, spaceId, parentEntry.nodeToken)
+    const verifiedTokens = verifiedChildren.map((node) => node.node_token)
+    if (JSON.stringify(verifiedTokens) !== JSON.stringify(desiredTokens)) {
+      throw new Error(`Feishu did not preserve the requested sibling order under ${parentKey}`)
+    }
+    report.movedNodes += nodesToMove.length
+    report.reorderedParents += 1
+  }
+  return report
 }
 
 async function assetHashesFor(assetPaths, sourcePath) {
@@ -446,10 +739,8 @@ async function assetHashesFor(assetPaths, sourcePath) {
 
 function syntheticContent(node) {
   return [
-    "> **🔄 GitHub 自动同步目录**",
-    `> 此节点对应源码目录 \`${node.key}\`，用于承载没有 \`index.md\` 的子页面。`,
-    "",
-    "请从下方知识库子页面继续浏览。",
+    `此目录汇集 **${node.title}** 主题下的内容。`,
+    "请从下方子页面继续浏览。",
     ""
   ].join("\n")
 }
@@ -561,6 +852,9 @@ async function localDryRun({mode, routeMap, routeTree, sourcePages}) {
     mermaid,
     mode,
     syntheticNodes: routeTree.filter((node) => node.synthetic).length,
+    topLevelDocuments: routeTree
+      .filter((node) => node.parentKey === null)
+      .map((node) => ({key: node.key, title: node.title})),
     totalNodes: routeTree.length,
     warnings
   }
@@ -575,11 +869,11 @@ async function sync({mode}) {
 
   const client = new LarkClient()
   const sourcePages = await readTrackedPages()
-  const routeTree = buildContentTree(sourcePages)
+  const sidebarLinks = await readSidebarLinks()
+  const routeTree = buildContentTree(sourcePages, sidebarLinks)
   const routeMap = buildRouteMap(routeTree)
   const commit = runGit(["rev-parse", "HEAD"])
-  await fs.rm(TEMP_ROOT, {force: true, recursive: true})
-  await fs.mkdir(TEMP_ROOT, {recursive: true})
+  await prepareTempRoot()
 
   const rootDetails = await client.call([
     "wiki",
@@ -592,24 +886,69 @@ async function sync({mode}) {
     "bot"
   ])
   const rootChildren = await listChildren(client, spaceId, rootNodeToken)
-  const stateNode = await ensureHelperNode({
+  const existingSystemNodes = rootChildren.filter((node) => node.title === SYSTEM_TITLE)
+  if (existingSystemNodes.length > 1) {
+    throw new Error(`Multiple helper nodes named ${SYSTEM_TITLE} exist under ${rootNodeToken}`)
+  }
+  const existingSystemNode = existingSystemNodes[0] || null
+  const existingSystemChildren = existingSystemNode
+    ? await listChildren(client, spaceId, existingSystemNode.node_token)
+    : []
+  const existingStateNodes = [
+    ...rootChildren.filter((node) => node.title === STATE_TITLE),
+    ...existingSystemChildren.filter((node) => node.title === STATE_TITLE)
+  ]
+  if (existingStateNodes.length > 1) {
+    throw new Error(`Multiple helper nodes named ${STATE_TITLE} exist`)
+  }
+  const existingStateNode = existingStateNodes[0] || null
+  const stateContent = existingStateNode
+    ? await fetchDocument(client, existingStateNode.obj_token)
+    : ""
+  const state = parseState(stateContent)
+  state.archives ||= []
+  const rollbackSnapshot = await buildRollbackSnapshot({
+    client,
+    extraParentTokens: existingSystemNode ? [existingSystemNode.node_token] : [],
+    rootChildren,
+    routeTree,
+    spaceId,
+    state
+  })
+  await initializeRecoveryFiles(rollbackSnapshot)
+  state.status = "in_progress"
+  state.targetCommit = commit
+  if (existingStateNode) {
+    await writeState(client, existingStateNode, state)
+  }
+
+  const systemNode = await ensureHelperNode({
     children: rootChildren,
     client,
     parentNodeToken: rootNodeToken,
+    spaceId,
+    title: SYSTEM_TITLE
+  })
+  const systemChildren = await listChildren(client, spaceId, systemNode.node_token)
+  const stateNode = await ensureHelperNode({
+    children: systemChildren,
+    client,
+    parentNodeToken: systemNode.node_token,
+    sourceChildren: rootChildren,
     spaceId,
     title: STATE_TITLE
   })
+  if (!existingStateNode) {
+    await writeState(client, stateNode, state)
+  }
   const archiveNode = await ensureHelperNode({
-    children: rootChildren,
+    children: systemChildren,
     client,
-    parentNodeToken: rootNodeToken,
+    parentNodeToken: systemNode.node_token,
+    sourceChildren: rootChildren,
     spaceId,
     title: ARCHIVE_TITLE
   })
-
-  const stateContent = await fetchDocument(client, stateNode.obj_token)
-  const state = parseState(stateContent)
-  state.archives ||= []
   const topology = await reconcileTopology({
     archiveNode,
     client,
@@ -620,8 +959,15 @@ async function sync({mode}) {
     state
   })
   state.pages = topology.pages
-  state.status = "in_progress"
-  state.targetCommit = commit
+  const orderReport = await reconcileSiblingOrder({
+    archiveNode,
+    client,
+    englishRoot: state.pages["docs/en"],
+    pages: state.pages,
+    routeTree,
+    spaceId,
+    systemNode
+  })
   await writeState(client, stateNode, state)
 
   let contentReport
@@ -648,6 +994,9 @@ async function sync({mode}) {
     commit,
     contentPages: sourcePages.length,
     mode,
+    repairedDuplicateMappings: topology.releasedDuplicates.length,
+    reorderedNodes: orderReport.movedNodes,
+    reorderedParents: orderReport.reorderedParents,
     renamed: topology.renamed,
     skipped: contentReport.skipped,
     syntheticNodes: routeTree.filter((node) => node.synthetic).length,
@@ -671,7 +1020,8 @@ async function sync({mode}) {
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   const sourcePages = await readTrackedPages()
-  const routeTree = buildContentTree(sourcePages)
+  const sidebarLinks = await readSidebarLinks()
+  const routeTree = buildContentTree(sourcePages, sidebarLinks)
   const routeMap = buildRouteMap(routeTree)
   if (args.dryRun) {
     const report = await localDryRun({
