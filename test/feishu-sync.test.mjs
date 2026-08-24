@@ -318,17 +318,17 @@ test("transformMarkdown converts VitePress syntax, resources, formulas, diagrams
   assert.match(result.content, /!\[架构\]\(@\.\/docs\/public\/papers\/demo\/arch\.png\)/)
   assert.ok(
     result.content.includes(
-      String.raw`<latex>a &lt; b &amp; c &gt; d \\frac{x}{y}</latex>`
+      String.raw`<latex>a &lt; b &amp; c &gt; d \frac{x}{y}</latex>`
     )
   )
   assert.ok(
     result.content.includes(
-      String.raw`<latex>\\mathcal{L} = \\mathbb{E}[x]</latex>`
+      String.raw`<latex>\mathcal{L} = \mathbb{E}[x]</latex>`
     )
   )
   assert.ok(
     result.content.includes(
-      String.raw`<latex>\\mathrm{KL}(p \\| q)</latex>`
+      String.raw`<latex>\mathrm{KL}(p \| q)</latex>`
     )
   )
   assert.doesNotMatch(result.content, /^\s*\$\$/m)
@@ -353,6 +353,29 @@ test("transformMarkdown converts VitePress syntax, resources, formulas, diagrams
       href: "/guide/notation#symbols"
     }
   ])
+})
+
+test("transformMarkdown preserves LaTeX escapes inside Lark formula nodes", () => {
+  const source = [
+    "# Formula compatibility",
+    "",
+    "```math",
+    String.raw`f(x) = \begin{cases} x & x \lt 0 \\ y & x \gt 0 \end{cases}`,
+    "```"
+  ].join("\n")
+
+  const result = transformMarkdown({
+    source,
+    sourcePath: "docs/formula-compatibility.md",
+    routeMap: new Map(),
+    nodeMap: new Map()
+  })
+
+  assert.ok(
+    result.content.includes(
+      String.raw`<latex>f(x) = \begin{cases} x &amp; x \lt 0 \\ y &amp; x \gt 0 \end{cases}</latex>`
+    )
+  )
 })
 
 test("computeRenderHash changes when a referenced asset changes", () => {

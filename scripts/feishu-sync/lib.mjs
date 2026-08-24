@@ -542,7 +542,7 @@ function normalizeMermaid(content) {
 
 function renderLatex(content) {
   const normalizedContent = content.trim().replace(/\s*\n\s*/g, " ")
-  const escapedContent = escapeXml(normalizedContent).replace(/\\/g, "\\\\")
+  const escapedContent = escapeXml(normalizedContent)
   return `<latex>${escapedContent}</latex>`
 }
 
