@@ -33,33 +33,33 @@ flowchart TB
 
 **第一步：token 级奖励塑形**（与 PPO-RLHF 相同）。序列末端的奖励分数加上逐 token 的 KL 惩罚：
 
-$$
-r_t = \mathbb{1}[t = T]\, r_\phi(x, y) - \beta\,\mathrm{KL}(t), \qquad \mathrm{KL}(t) = \log \frac{\pi_{\theta_{\text{old}}}(y_t \mid x, y_{<t})}{\pi_{\text{ref}}(y_t \mid x, y_{<t})}
-$$
+```math
+r_t = \mathbb{1}[t = T]\, r_\phi(x, y) - \beta\,\mathrm{KL}(t), \qquad \mathrm{KL}(t) = \log \frac{\pi_{\theta_{\text{old}}}(y_t \mid x, y_{\lt t})}{\pi_{\text{ref}}(y_t \mid x, y_{\lt t})}
+```
 
 **第二步：reward-to-go 作为优势**。取 $\gamma=1$、不做 bootstrapping，token $t$ 的优势就是它之后的累计奖励：
 
-$$
+```math
 A_t = r_\phi(x, y) - \beta \sum_{i=t}^{T} \mathrm{KL}(i)
-$$
+```
 
 **第三步：全局优势归一化**（核心创新）。在整个 global batch 的所有 token 上统计均值与标准差：
 
-$$
+```math
 \hat{A}_t = \frac{A_t - \mu_{\text{batch}}}{\sigma_{\text{batch}}}
-$$
+```
 
 **第四步：PPO-clip 代理目标**（没有 critic）：
 
-$$
-\mathcal{L}(\theta) = -\mathbb{E}_t \left[ \min\Big( \rho_t \hat{A}_t,\ \mathrm{clip}(\rho_t,\, 1-\epsilon,\, 1+\epsilon)\, \hat{A}_t \Big) \right], \qquad \rho_t = \frac{\pi_\theta(y_t \mid x, y_{<t})}{\pi_{\theta_{\text{old}}}(y_t \mid x, y_{<t})}
-$$
+```math
+\mathcal{L}(\theta) = -\mathbb{E}_t \left[ \min\Big( \rho_t \hat{A}_t,\ \mathrm{clip}(\rho_t,\, 1-\epsilon,\, 1+\epsilon)\, \hat{A}_t \Big) \right], \qquad \rho_t = \frac{\pi_\theta(y_t \mid x, y_{\lt t})}{\pi_{\theta_{\text{old}}}(y_t \mid x, y_{\lt t})}
+```
 
 **REINFORCE++-baseline 变体**（面向可验证奖励的推理任务）：当任务需要每 prompt 多采样时（如数学题，奖励是对/错），先用组均值移除 prompt 难度的位移，再做全局归一化：
 
-$$
+```math
 A_i = r_i - \mathrm{mean}(\{r_j\}_{j=1}^{G}), \qquad \hat{A}_i = \frac{A_i - \mu_{\text{batch}}}{\sigma_{\text{batch}}}
-$$
+```
 
 组均值负责"这道题本身多难"的去位移（这一步与 RLOO 同源、无偏），全局统计负责缩放——刻意避开 GRPO 按组除 std 的偏差来源。两个变体的分工：通用 RLHF（奖励来自 RM、prompt 多样、单采样即可）用 REINFORCE++；数学/代码等可验证奖励的推理训练用 REINFORCE++-baseline。
 

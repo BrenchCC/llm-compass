@@ -24,9 +24,9 @@ DoRA 的出发点是一项对「更新模式」的分析。作者把任意权重
 
 对一个权重矩阵 $W_0$，先按列做幅值-方向分解，再让 LoRA 只作用在方向分量上：
 
-$$
+```math
 W = m \cdot \frac{W_0 + \frac{\alpha}{r} B A}{\left\lVert W_0 + \frac{\alpha}{r} B A \right\rVert_c}
-$$
+```
 
 其中：
 - $m \in \mathbb{R}^{1 \times k}$ 是**可训练的幅值向量**，每列一个标量；

@@ -25,9 +25,9 @@ title: 全量微调
 
 训练目标是标准自回归 NLL，只在回答 token 上计 loss：
 
-$$
-\mathcal{L}_{\text{SFT}}(\theta) = -\mathbb{E}_{(x, y) \sim \mathcal{D}} \left[ \sum_{t=1}^{|y|} \log \pi_\theta(y_t \mid x, y_{<t}) \right]
-$$
+```math
+\mathcal{L}_{\text{SFT}}(\theta) = -\mathbb{E}_{(x, y) \sim \mathcal{D}} \left[ \sum_{t=1}^{|y|} \log \pi_\theta(y_t \mid x, y_{\lt t}) \right]
+```
 
 形式上与预训练相同，区别全在工程细节：
 

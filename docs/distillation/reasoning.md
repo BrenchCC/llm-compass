@@ -24,9 +24,9 @@ title: 推理蒸馏：把强推理模型的思维链蒸进小模型
 
 形式上它仍是一次标准 SFT，对教师轨迹做极大似然（记号见 [符号约定](/guide/notation)）：
 
-$$
-\mathcal{L}_{\text{SFT}}(\theta) = -\,\mathbb{E}_{(x,\,y_{\text{cot}}) \sim \mathcal{D}} \left[ \sum_{t=1}^{|y_{\text{cot}}|} \log \pi_\theta\big(y_{\text{cot},t} \mid x, y_{\text{cot},<t}\big) \right]
-$$
+```math
+\mathcal{L}_{\text{SFT}}(\theta) = -\,\mathbb{E}_{(x,\,y_{\text{cot}}) \sim \mathcal{D}} \left[ \sum_{t=1}^{|y_{\text{cot}}|} \log \pi_\theta\big(y_{\text{cot},t} \mid x, y_{\text{cot},\lt t}\big) \right]
+```
 
 其中 $y_{\text{cot}}$ 是教师生成的「长思维链 + 终答」整条轨迹。算法没新意，**全部功夫在 $\mathcal{D}$ 怎么造、怎么选**。
 

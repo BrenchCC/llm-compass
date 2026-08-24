@@ -33,17 +33,17 @@ title: Tool Use / Function Calling 训练
 
 SFT 只对 assistant 轮计算 loss，tool 返回轮与 system/user 一样 mask 掉：
 
-$$
-\mathcal{L}_{\text{SFT}} = -\sum_{t} m_t \log \pi_\theta(y_t \mid x, y_{<t}), \qquad m_t = \mathbb{1}\big[\, y_t \in \text{assistant 轮} \,\big]
-$$
+```math
+\mathcal{L}_{\text{SFT}} = -\sum_{t} m_t \log \pi_\theta(y_t \mid x, y_{\lt t}), \qquad m_t = \mathbb{1}\big[\, y_t \in \text{assistant 轮} \,\big]
+```
 
 ### 数据从哪来：三条路线
 
 **路线一：自监督标注（Toolformer, Meta, 2023）。** 不依赖人工演示，让模型自己学会"在文本的哪个位置插入哪个 API 调用"：用 few-shot prompt 在纯文本语料中采样候选调用位置与参数，实际执行 API 得到结果 $r_i$，再用"是否降低后续 token 的加权困惑度"过滤——仅当插入"调用 + 结果"比不插入、或只插入调用更有助于预测后文时才保留：
 
-$$
+```math
 \min\big(L_i(\varepsilon),\; L_i(c_i)\big) \;-\; L_i(c_i \oplus r_i) \;\ge\; \tau_f
-$$
+```
 
 其中 $L_i(\cdot)$ 是以给定前缀计算的位置 $i$ 之后 token 的加权交叉熵，$c_i$ 为 API 调用、$\varepsilon$ 为空串。过滤后的语料用于继续预训练。6.7B 的 GPT-J 经此训练（工具含计算器、问答、搜索、翻译、日历）在多个零样本任务上超过 175B 的 GPT-3，且不损害语言建模能力（NeurIPS 2023 Oral）。
 

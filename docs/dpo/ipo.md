@@ -26,15 +26,15 @@ IPO 的修正思路很直接：不要让 reward 差「越大越好」，而是�
 
 IPO 在 ΨPO 框架中取 $\Psi=\text{Identity}$（恒等映射，这也是「Identity Preference Optimization」名字的来源），由此推导出一个**平方损失**：
 
-$$
+```math
 \mathcal{L}_{\text{IPO}} = \mathbb{E}_{(x,y_w,y_l)}\left[\left( \log \frac{\pi_\theta(y_w|x)\,\pi_{\text{ref}}(y_l|x)}{\pi_\theta(y_l|x)\,\pi_{\text{ref}}(y_w|x)} - \frac{1}{2\tau} \right)^2\right]
-$$
+```
 
 括号里的第一项正是 DPO 的隐式 reward 差（去掉 $\beta$ 因子）：
 
-$$
+```math
 h_\theta(x,y_w,y_l) = \log \frac{\pi_\theta(y_w|x)}{\pi_{\text{ref}}(y_w|x)} - \log \frac{\pi_\theta(y_l|x)}{\pi_{\text{ref}}(y_l|x)}
-$$
+```
 
 **与 DPO 的核心对照**：DPO 是 $-\log\sigma(\beta h_\theta)$，logistic 损失对 $h_\theta$ 单调递减，永远奖励「更大的差」；IPO 是 $(h_\theta - \frac{1}{2\tau})^2$，平方损失在 $h_\theta=\frac{1}{2\tau}$ 处取最小，把差**钉**在一个固定目标 margin 上。一旦达到目标，继续增大差反而被惩罚——这就从根本上消除了「reward 差 → ∞」的失控。
 

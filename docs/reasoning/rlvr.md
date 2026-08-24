@@ -24,9 +24,9 @@ RLVR（Reinforcement Learning with Verifiable Rewards）的核心主张极其朴
 
 奖励从"一个神经网络的打分"变成"一个确定性程序的判定"。它不会被语言花招欺骗，可无限规模化、零标注成本，而且**几乎无偏**——这正是把 RL 训练规模真正拉起来的前提。
 
-$$
+```math
 r(x, y) = \mathbb{1}[\text{verify}(x, \text{answer}(y)) = \text{correct}]
-$$
+```
 
 ## DeepSeek-R1-Zero：纯 RL 能逼出长推理
 

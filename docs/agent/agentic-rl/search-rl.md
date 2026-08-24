@@ -58,9 +58,9 @@ flowchart LR
 
 Search-R1 走极简路线：**纯结果奖励、规则化**，奖励就是答案与标注的精确匹配（EM）：
 
-$$
+```math
 r_\phi(x, y) = \mathrm{EM}(a_{\text{pred}}, a_{\text{gold}})
-$$
+```
 
 作者明确不加格式奖励，认为结果奖励足够、避免 reward hacking。R1-Searcher 则采用**两阶段奖励**应对冷启动：第一阶段用"检索激励"——只要发起过检索就给 0.5、格式正确再给 0.5，不看答案对错，先让模型快速学会调用格式；第二阶段切到答案奖励（F1 分数），格式错则罚 −2。ReSearch 走 GRPO + 结果奖励（答案正确性 + 格式）路线。
 
@@ -68,9 +68,9 @@ $$
 
 这是把"环境返回"塞进自回归序列后必须处理的细节。检索回来的 `<information>` token **不是模型生成的**，若把它们也算进策略梯度，等于让模型去"拟合"外部文本，会带来不稳定的学习动态。三家工作不约而同地引入**检索 token 掩码**：用指示函数 $I(y_t)$ 标记——LLM 生成的 token 取 1、检索返回的 token 取 0，损失只在 $I(y_t)=1$ 处计算。Search-R1 的带掩码 PPO 目标可写为：
 
-$$
+```math
 \mathcal{J}_{\text{PPO}}(\theta) = \mathbb{E}\Big[\frac{1}{\sum_t I(y_t)} \sum_{t:\,I(y_t)=1} \min\big(\rho_t A_t,\ \mathrm{clip}(\rho_t, 1{-}\epsilon, 1{+}\epsilon) A_t\big)\Big]
-$$
+```
 
 其中 $\rho_t = \pi_\theta / \pi_{\text{old}}$。GRPO 版本同理在 group 内做归一化并只在生成 token 上累加。Search-R1 的消融显示，加掩码在多个数据集上稳定提升表现（如 7B-base 在 NQ 上 0.480 vs 不掩码的 0.388）。R1-Searcher 把这一点称作"retrieval mask-based loss calculation"，与"RAG-based rollout"并列为对 REINFORCE++ 的两处改动。
 

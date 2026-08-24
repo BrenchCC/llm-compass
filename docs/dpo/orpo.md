@@ -26,19 +26,19 @@ ORPO 的做法：在标准 SFT 的 NLL 损失之外，加一个**弱**的 odds r
 
 ORPO 的损失由 SFT 项和 odds ratio 项相加构成：
 
-$$
+```math
 \mathcal{L}_{\text{ORPO}} = \mathcal{L}_{\text{SFT}}(y_w) + \lambda \cdot \mathcal{L}_{\text{OR}}
-$$
+```
 
 其中 $\mathcal{L}_{\text{SFT}}$ 是对 chosen 回答 $y_w$ 的标准 token 级 NLL（交叉熵）损失。偏好项定义为：
 
-$$
+```math
 \mathcal{L}_{\text{OR}} = -\log \sigma\!\left( \log \frac{\text{odds}_\theta(y_w|x)}{\text{odds}_\theta(y_l|x)} \right),
 \qquad
 \text{odds}_\theta(y|x) = \frac{P_\theta(y|x)}{1 - P_\theta(y|x)}
-$$
+```
 
-这里 $P_\theta(y|x)$ 是长度归一化后的序列概率，即 $\exp\!\big(\frac{1}{|y|}\sum_t \log \pi_\theta(y_t|x,y_{<t})\big)$，避免长短回答间的量纲不可比。
+这里 $P_\theta(y|x)$ 是长度归一化后的序列概率，即 $\exp\!\big(\frac{1}{|y|}\sum_t \log \pi_\theta(y_t|x,y_{\lt t})\big)$，避免长短回答间的量纲不可比。
 
 **为什么用 odds ratio 而不是概率比？** 关键在梯度的「温和」程度。可以证明 $\mathcal{L}_{\text{OR}}$ 的梯度中带有因子 $\big(1+\frac{\text{odds}_\theta(y_w)}{\text{odds}_\theta(y_l)}\big)^{-1}$：当 chosen 的 odds 已经远大于 rejected 时，该因子趋近 0，惩罚自动减弱。这使得 odds ratio 项不会过度压制 rejected——而概率比（如 log-likelihood ratio）在确定性偏好下会无界放大（这正是 [IPO](/dpo/ipo) 所诊断的 DPO 问题）。odds ratio 提供了一种自带「软上限」的对比信号，恰好适合与 SFT 项共存而不互相打架。
 

@@ -25,9 +25,9 @@ Chat Template 就是这套约定的具体实现。它通常借助若干 **specia
 
 一段对话是一个消息列表 $M = [(\text{role}_1, c_1), \dots, (\text{role}_n, c_n)]$，模板是一个确定性函数 $T$，把它映射成 token 序列：
 
-$$
+```math
 T(M) = \text{prefix}_1 \oplus c_1 \oplus \text{suffix}_1 \oplus \cdots \oplus \text{prefix}_n \oplus c_n \oplus \text{suffix}_n
-$$
+```
 
 其中 $\oplus$ 表示拼接，每个角色的 prefix/suffix 由模板规定。SFT 的训练目标仍是标准 NLL，但只在 assistant 内容段计算 loss（见 [Loss Masking](/sft/loss-masking)）。
 

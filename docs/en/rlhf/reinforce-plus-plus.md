@@ -25,9 +25,9 @@ TODO:
 
 After folding the KL penalty into token-level rewards, the advantage is normalized over the global batch:
 
-$$
+```math
 \hat{A}_t = \frac{A_t - \mu_{\text{batch}}}{\sigma_{\text{batch}}}
-$$
+```
 
 TODO:
 

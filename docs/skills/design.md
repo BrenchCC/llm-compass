@@ -37,9 +37,9 @@ Claude Code 在此之上扩展了大量可选字段：`when_to_use`、`argument-
 
 设已装 $N$ 个 skill，静息开销为
 
-$$
+```math
 C_{\text{idle}} = \sum_{i=1}^{N} c_i^{\text{meta}}, \qquad c_i^{\text{meta}} \approx 100 \text{ tokens}
-$$
+```
 
 触发后的增量成本是 $c^{\text{body}}$（官方建议 SKILL.md 正文 <5k tokens、500 行以内）加按需读取的第三层文件。Claude Code 对第一层有硬预算：skill 列表默认占模型上下文窗口的 **1%**，溢出时最少使用的 skill 的 description 先被丢弃；单条目 description + when_to_use 合并上限 1,536 字符。可经 `skillListingBudgetFraction` 调整（如 0.02 = 2%），`/doctor` 可检查是否溢出。装几十个 skill 不是免费的——预算视角下，每个平庸 skill 都在挤占好 skill 的展示位。
 

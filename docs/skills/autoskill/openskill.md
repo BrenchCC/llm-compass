@@ -50,7 +50,9 @@ flowchart LR
 
 **③ Refine（用自建虚拟任务精炼）**。技能集对自生成的虚拟测试套件反复迭代，用**虚拟通过率（virtual pass rate）** \(\tilde{r}\) 作为质量代理：
 
-$$\tilde{r}^{(j)} = \frac{1}{|\tilde{T}_i|} \sum_k \tilde{t}_{i,k}\big(\pi_\theta(\cdots)\big)$$
+```math
+\tilde{r}^{(j)} = \frac{1}{|\tilde{T}_i|} \sum_k \tilde{t}_{i,k}\big(\pi_\theta(\cdots)\big)
+```
 
 当需要改进时，一个诊断分类器（Gap-vs-Bug）判定失败到底来自实现 bug（标为 SELF-FIXABLE，自行修复）还是知识缺口（标为 NEEDS-DR，触发定向再检索）。循环在 \(\tilde{r}=1.0\) 或耗尽 3 轮预算时终止。
 

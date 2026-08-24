@@ -25,18 +25,18 @@ title: Loss Masking
 
 带 mask 的 SFT 损失在标准 NLL 上乘一个 0/1 掩码 $m_t$：
 
-$$
-\mathcal{L}(\theta) = -\frac{1}{\sum_t m_t} \sum_{t=1}^{T} m_t \log \pi_\theta(y_t \mid y_{<t}), \qquad m_t \in \{0, 1\}
-$$
+```math
+\mathcal{L}(\theta) = -\frac{1}{\sum_t m_t} \sum_{t=1}^{T} m_t \log \pi_\theta(y_t \mid y_{\lt t}), \qquad m_t \in \{0, 1\}
+```
 
 掩码构造规则：
 
-$$
+```math
 m_t = \begin{cases}
 1 & y_t \ \text{属于 assistant 回答内容（含其回合结束符）} \\
 0 & y_t \ \text{属于 system / user / 模板前缀}
 \end{cases}
-$$
+```
 
 要点：
 

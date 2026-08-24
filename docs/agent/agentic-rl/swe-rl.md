@@ -48,15 +48,15 @@ flowchart TD
 
 **奖励函数**。这是 SWE-RL 最关键的设计，逻辑非常简洁：
 
-$$
+```math
 R(\hat{y}, y^*) =
 \begin{cases}
 -1, & \text{输出格式非法（无法解析出合法编辑）} \\[4pt]
-\operatorname{sim}(\hat{y}, y^*), & \text{格式合法}
+\mathrm{sim}(\hat{y}, y^*), & \text{格式合法}
 \end{cases}
-$$
+```
 
-其中 $\hat{y}$ 是模型生成的 patch，$y^*$ 是 oracle patch，$\operatorname{sim}(\cdot)$ 是 Python `difflib.SequenceMatcher` 计算的序列相似度，取值 $[0,1]$。相比「测试通过 = 1 / 否则 = 0」的稀疏 0/1 奖励，这个连续相似度给出了**稠密**信号：哪怕没完全改对，越接近真实改动得分越高，partial credit 让早期训练梯度更平滑。代价是它只是 oracle 的「代理」——和真正跑测试通过不完全等价（见局限）。
+其中 $\hat{y}$ 是模型生成的 patch，$y^*$ 是 oracle patch，$\mathrm{sim}(\cdot)$ 是 Python `difflib.SequenceMatcher` 计算的序列相似度，取值 $[0,1]$。相比「测试通过 = 1 / 否则 = 0」的稀疏 0/1 奖励，这个连续相似度给出了**稠密**信号：哪怕没完全改对，越接近真实改动得分越高，partial credit 让早期训练梯度更平滑。代价是它只是 oracle 的「代理」——和真正跑测试通过不完全等价（见局限）。
 
 **编辑格式**。模型被要求先输出推理（CoT），再输出 search/replace 形式的代码编辑（指明要替换的原文片段与新内容）；官方实现也支持 unified diff 等格式。格式不合法直接判 $-1$，逼模型学会稳定产出可解析的结构化编辑。
 

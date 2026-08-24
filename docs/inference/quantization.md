@@ -24,9 +24,9 @@ LLM 量化的根本难点是**激活离群值（outliers）**：少数通道的�
 
 $b$-bit 均匀量化把浮点数映射到整数格点再还原：
 
-$$
-\hat w = s\cdot\Big(\operatorname{clamp}\big(\lfloor w/s \rceil + z,\ 0,\ 2^b-1\big) - z\Big)
-$$
+```math
+\hat w = s\cdot\Big(\mathrm{clamp}\big(\lfloor w/s \rceil + z,\ 0,\ 2^b-1\big) - z\Big)
+```
 
 缩放因子 $s$ 与零点 $z$ 的统计粒度（per-tensor / per-channel / per-group，常见 group size 128）决定误差上限。各方法的差异在于：**最小化什么误差、用什么信息分配精度**。
 
@@ -36,7 +36,7 @@ GPTQ（Frantar et al., 2022，ICLR 2023）是 one-shot weight-only 训练后量�
 
 ### AWQ：按激活幅值找出 1% 关键通道，用缩放保护
 
-AWQ（Lin et al., 2023，MLSys 2024 Best Paper）的核心观察：权重并非同等重要——仅保护约 1% 的显著（salient）通道就能大幅降低量化误差，且显著性应按**激活分布**识别（激活大的通道对应的权重更关键），而非权重自身大小。把这 1% 留成 FP16 的混合精度方案对硬件不友好，AWQ 改用数学等价的 per-channel 缩放：显著通道权重乘 $s>1$ 后再量化（相对量化误差变小），激活侧除以 $s$ 抵消；在 $s = s_X^{\alpha}$ 的单参数族上网格搜索 $\alpha$ 最小化输出误差。全程不做反向传播、不做逐层重构，因此对校准集不敏感、泛化性好。配套的 TinyChat 推理框架在桌面/移动 GPU 上相对 Hugging Face FP16 有 3 倍以上加速。
+AWQ（Lin et al., 2023，MLSys 2024 Best Paper）的核心观察：权重并非同等重要——仅保护约 1% 的显著（salient）通道就能大幅降低量化误差，且显著性应按**激活分布**识别（激活大的通道对应的权重更关键），而非权重自身大小。把这 1% 留成 FP16 的混合精度方案对硬件不友好，AWQ 改用数学等价的 per-channel 缩放：显著通道权重乘 $s\gt 1$ 后再量化（相对量化误差变小），激活侧除以 $s$ 抵消；在 $s = s_X^{\alpha}$ 的单参数族上网格搜索 $\alpha$ 最小化输出误差。全程不做反向传播、不做逐层重构，因此对校准集不敏感、泛化性好。配套的 TinyChat 推理框架在桌面/移动 GPU 上相对 Hugging Face FP16 有 3 倍以上加速。
 
 ![AWQ：按激活分布找出 1% 显著权重，用 per-channel 缩放保护而非混合精度](/papers/quantization/awq-method.png)
 
@@ -44,11 +44,11 @@ AWQ（Lin et al., 2023，MLSys 2024 Best Paper）的核心观察：权重并非�
 
 ### SmoothQuant：把激活的量化难度迁移给权重
 
-SmoothQuant（Xiao et al., 2022，ICML 2023）走 W8A8 路线，training-free。利用恒等变换 $Y=(X\operatorname{diag}(s)^{-1})(\operatorname{diag}(s)W)$，激活按通道除以 $s$、权重乘以同一 $s$，把 outlier 造成的量化难度从激活"平滑"地搬到权重上：
+SmoothQuant（Xiao et al., 2022，ICML 2023）走 W8A8 路线，training-free。利用恒等变换 $Y=(X\mathrm{diag}(s)^{-1})(\mathrm{diag}(s)W)$，激活按通道除以 $s$、权重乘以同一 $s$，把 outlier 造成的量化难度从激活"平滑"地搬到权重上：
 
-$$
+```math
 s_j=\frac{\max|X_j|^{\alpha}}{\max|W_j|^{1-\alpha}}
-$$
+```
 
 $\alpha$ 是迁移强度，论文对 OPT、BLOOM 等模型用 0.5 作均衡默认值，激活离群更严重的模型（如 GLM-130B）需调到 0.75。校准只需统计每通道激活最大值。实测最高 1.56x 加速、2x 显存节省，可让 530B 模型在单节点内服务；已集成进 TensorRT-LLM、FasterTransformer、ONNX Runtime 等。
 

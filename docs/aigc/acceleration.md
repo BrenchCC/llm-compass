@@ -38,9 +38,9 @@ DDIM（Denoising Diffusion Implicit Models）把 DDPM 的随机马尔可夫链�
 
 [DPM-Solver](https://arxiv.org/abs/2206.00927)（Lu et al., 2022）把扩散 ODE 写成精确解的形式：**解析地算出其中的线性部分**，只把非线性的神经网络项留给数值积分。通过换元，反向 ODE 的解被化简成一个对网络输出的指数加权积分：
 
-$$
+```math
 x_t = \frac{\alpha_t}{\alpha_s} x_s - \alpha_t \int_{\lambda_s}^{\lambda_t} e^{-\lambda}\, \hat{\epsilon}_\theta(\hat{x}_\lambda, \lambda)\, \mathrm{d}\lambda
-$$
+```
 
 其中 $\lambda_t = \log(\alpha_t/\sigma_t)$ 是对数信噪比。在这个形式上再用一阶、二阶、三阶 Taylor 展开，就得到带收敛阶保证的高阶求解器。结果是：**在大约 10~20 次网络评估内就能出高质量图**，是无需任何重新训练的纯采样器替换。其改进版 **DPM-Solver++** 针对引导（classifier-free guidance）强度大的场景做了稳定性优化，是目前 Stable Diffusion 等工具链的默认采样器之一。
 
@@ -56,9 +56,9 @@ $$
 
 [Consistency Models](https://arxiv.org/abs/2303.01469)（Song et al., 2023）提出了一个更优雅的目标：学一个**一致性函数** $f_\theta(x_t, t)$，要求 ODE 轨迹上的**任意一点都直接映射到轨迹起点** $x_0$：
 
-$$
+```math
 f_\theta(x_t, t) \approx x_0,\quad \forall t \in [\epsilon, T]
-$$
+```
 
 训练时强制同一条轨迹上不同时刻的输出保持「自一致」（self-consistency）。一旦学成，从纯噪声 $x_T$ 一次前向就能出图，因此**天然支持一步生成**；也可以做少步采样，用多次「加噪—去噪」迭代来拿计算换质量。它既能从预训练扩散模型蒸馏（Consistency Distillation），也能作为独立生成模型从头训练（Consistency Training）。论文在 CIFAR-10 上单步 FID 达到 3.55、ImageNet 64×64 达到 6.20，刷新了当时的少步生成 SOTA。此外它还原生支持图像修复、上色、超分等零样本编辑。
 

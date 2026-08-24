@@ -40,9 +40,9 @@ graph LR
 
 GPipe（Huang et al. 2018）的关键贡献是 **micro-batch 流水**：把一个 mini-batch 拆成 $m$ 个 micro-batch，依次注入流水线，让不同 stage 同时处理不同 micro-batch，从而把空转压缩。但流水线启动（填充）与排空阶段仍存在**气泡（bubble）**——部分卡无事可做。GPipe 调度（所有前向做完再统一反向）的气泡占比约为：
 
-$$
+```math
 \text{bubble fraction} = \frac{p - 1}{m + p - 1}
-$$
+```
 
 可见增大 $m$ 能摊薄气泡，但 $m$ 越大、GPipe 同时缓存的激活越多，显存压力越大。
 

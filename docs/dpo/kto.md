@@ -20,31 +20,31 @@ title: KTO（Kahneman-Tversky Optimization）
 
 沿用 DPO 的隐式 reward 定义：
 
-$$
+```math
 \hat r_\theta(x,y) = \beta\log\frac{\pi_\theta(y|x)}{\pi_{\text{ref}}(y|x)}
-$$
+```
 
 前景理论的价值函数是相对于一个**参考点**来度量收益/损失的。KTO 把参考点 $z_0$ 取为当前策略相对 reference 的平均偏移，用 batch 内的 KL 估计：
 
-$$
+```math
 z_0 = \mathbb{E}_{y'\sim\pi_\theta}\!\left[\mathrm{KL}\big(\pi_\theta(y'|x)\,\|\,\pi_{\text{ref}}(y'|x)\big)\right]
-$$
+```
 
 实现上 $z_0$ 用**当前 batch（错位配对的样本）估计**，并且**不回传梯度**（detach），它只起「基准线」作用。单样本的价值函数 $v$ 按好/坏分两支，套 sigmoid 实现损失厌恶式的饱和：
 
-$$
+```math
 v(x,y) =
 \begin{cases}
 \lambda_D\,\sigma\!\big(\beta(\hat r_\theta(x,y) - z_0)\big) & y \text{ 为 desirable（好）}\\[4pt]
 \lambda_U\,\sigma\!\big(\beta(z_0 - \hat r_\theta(x,y))\big) & y \text{ 为 undesirable（坏）}
 \end{cases}
-$$
+```
 
 KTO 损失就是最大化价值（即最小化负价值）：
 
-$$
+```math
 \mathcal{L}_{\text{KTO}} = \mathbb{E}_{(x,y)}\big[\,\lambda_y - v(x,y)\,\big]
-$$
+```
 
 读法：好样本要让 $\hat r_\theta(x,y)$ 超过参考点 $z_0$（价值升高），坏样本要让 $\hat r_\theta(x,y)$ 低于参考点。sigmoid 让单个样本的价值有上界，这正对应前景理论里「收益的边际效用递减」，也防止个别样本主导梯度。
 

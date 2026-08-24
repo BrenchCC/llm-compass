@@ -23,9 +23,9 @@ TODO:
 
 ## 2. Method and Formulas
 
-$$
+```math
 \nabla_\theta \mathcal{J} = \frac{1}{k} \sum_{i=1}^{k} \left( r(x, y_i) - \frac{1}{k-1}\sum_{j \neq i} r(x, y_j) \right) \nabla_\theta \log \pi_\theta(y_i | x)
-$$
+```
 
 TODO:
 

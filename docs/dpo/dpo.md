@@ -24,27 +24,27 @@ DPO 的关键洞察是：RLHF 那个被优化的目标——「最大化 reward�
 
 RLHF 优化的 KL 约束目标是：
 
-$$
+```math
 \max_{\pi_\theta}\ \mathbb{E}_{x,\,y\sim\pi_\theta}\big[r(x,y)\big] - \beta\, \mathbb{D}_{\mathrm{KL}}\!\left[\pi_\theta(y|x)\,\|\,\pi_{\text{ref}}(y|x)\right]
-$$
+```
 
 这个目标对 $\pi_\theta$ 有闭式最优解（标准的 KL 正则化奖励最大化结论）：
 
-$$
+```math
 \pi^*(y|x) = \frac{1}{Z(x)}\,\pi_{\text{ref}}(y|x)\,\exp\!\left(\tfrac{1}{\beta}\,r(x,y)\right)
-$$
+```
 
 其中 $Z(x)=\sum_y \pi_{\text{ref}}(y|x)\exp(\tfrac{1}{\beta}r(x,y))$ 是难以计算的配分函数。两边取对数整理，把 reward **反解**成策略的函数：
 
-$$
+```math
 r(x,y) = \beta\log\frac{\pi^*(y|x)}{\pi_{\text{ref}}(y|x)} + \beta\log Z(x)
-$$
+```
 
 关键一步：DPO 用 Bradley-Terry 偏好模型，$P(y_w\succ y_l\mid x)=\sigma\big(r(x,y_w)-r(x,y_l)\big)$。注意这里 reward 是**作差**出现的，而 $\beta\log Z(x)$ 只依赖 $x$、不依赖 $y$，在 $y_w$ 与 $y_l$ 上完全相同，作差后**直接消掉**。这正是 DPO 绕开配分函数的核心技巧。代入并对偏好数据做最大似然，得到 DPO 损失：
 
-$$
+```math
 \mathcal{L}_{\text{DPO}} = -\,\mathbb{E}_{(x, y_w, y_l)}\left[ \log\sigma\!\left( \beta\log\frac{\pi_\theta(y_w|x)}{\pi_{\text{ref}}(y_w|x)} - \beta\log\frac{\pi_\theta(y_l|x)}{\pi_{\text{ref}}(y_l|x)} \right)\right]
-$$
+```
 
 **隐式 reward**。定义 $\hat r_\theta(x,y) = \beta\log\frac{\pi_\theta(y|x)}{\pi_{\text{ref}}(y|x)}$，损失就是 $-\log\sigma(\hat r_\theta(x,y_w)-\hat r_\theta(x,y_l))$——一个标准的成对排序（pairwise ranking）分类损失。训练做的事就是：**拉高 chosen 的隐式 reward、压低 rejected 的隐式 reward**。
 
@@ -52,11 +52,11 @@ $$
 
 **梯度直觉**。对损失求梯度可得（记 $\hat r_w,\hat r_l$ 为 chosen/rejected 隐式 reward）：
 
-$$
+```math
 \nabla_\theta\mathcal{L}_{\text{DPO}} = -\beta\,\mathbb{E}\Big[\underbrace{\sigma(\hat r_l-\hat r_w)}_{\text{权重}}\big(\nabla_\theta\log\pi_\theta(y_w|x)-\nabla_\theta\log\pi_\theta(y_l|x)\big)\Big]
-$$
+```
 
-当模型把偏好排错（$\hat r_l > \hat r_w$）时权重 $\sigma(\hat r_l-\hat r_w)$ 大、更新强；已经排对的样本权重趋近 0、几乎不更新。这是一种天然的难样本聚焦。
+当模型把偏好排错（$\hat r_l \gt  \hat r_w$）时权重 $\sigma(\hat r_l-\hat r_w)$ 大、更新强；已经排对的样本权重趋近 0、几乎不更新。这是一种天然的难样本聚焦。
 
 ## 与 baseline 对比
 

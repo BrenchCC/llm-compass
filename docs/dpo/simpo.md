@@ -16,7 +16,7 @@ title: SimPO
 
 SimPO 的出发点是审视 [DPO](/dpo/dpo) 隐式 reward 的两个「不优雅」之处。
 
-**第一，DPO 的隐式 reward 与生成度量不一致。** DPO 用 $\hat{r}(x,y)=\beta\log\frac{\pi_\theta(y|x)}{\pi_{\text{ref}}(y|x)}$ 作为隐式 reward，其中 $\log\pi_\theta(y|x)=\sum_t\log\pi_\theta(y_t|x,y_{<t})$ 是**序列求和**的对数概率。但模型在解码时，无论是 greedy、beam search 还是采样，排序候选用的实际度量更接近**平均**对数概率（长度归一化后的得分）。训练目标和推理目标之间存在系统性错位：训练时把一个回答排在前面，生成时不一定真的更倾向它。
+**第一，DPO 的隐式 reward 与生成度量不一致。** DPO 用 $\hat{r}(x,y)=\beta\log\frac{\pi_\theta(y|x)}{\pi_{\text{ref}}(y|x)}$ 作为隐式 reward，其中 $\log\pi_\theta(y|x)=\sum_t\log\pi_\theta(y_t|x,y_{\lt t})$ 是**序列求和**的对数概率。但模型在解码时，无论是 greedy、beam search 还是采样，排序候选用的实际度量更接近**平均**对数概率（长度归一化后的得分）。训练目标和推理目标之间存在系统性错位：训练时把一个回答排在前面，生成时不一定真的更倾向它。
 
 **第二，序列求和的对数概率引入长度偏置。** 由于每个 token 的对数概率都是负数，求和会让长回答的总分天然偏低、短回答偏高。DPO 试图通过比值消掉这一点，但 $y_w$ 与 $y_l$ 长度往往不同，残余的长度信号会被优化器利用——常见后果是 DPO 训完后回答显著变长（reward hacking 的一种）。
 
@@ -28,15 +28,15 @@ SimPO 的答案是：用长度归一化的平均对数概率直接当 reward，�
 
 SimPO 定义的 reward 是长度归一化的平均对数概率：
 
-$$
-r_{\text{SimPO}}(x,y) = \frac{\beta}{|y|}\log \pi_\theta(y|x) = \frac{\beta}{|y|}\sum_{t=1}^{|y|}\log \pi_\theta(y_t \mid x, y_{<t})
-$$
+```math
+r_{\text{SimPO}}(x,y) = \frac{\beta}{|y|}\log \pi_\theta(y|x) = \frac{\beta}{|y|}\sum_{t=1}^{|y|}\log \pi_\theta(y_t \mid x, y_{\lt t})
+```
 
-其中 $|y|$ 是回答的有效 token 数。代入 Bradley-Terry 偏好模型，并加入目标 margin $\gamma>0$：
+其中 $|y|$ 是回答的有效 token 数。代入 Bradley-Terry 偏好模型，并加入目标 margin $\gamma\gt 0$：
 
-$$
+```math
 \mathcal{L}_{\text{SimPO}} = -\mathbb{E}_{(x,y_w,y_l)}\left[\log \sigma\!\left(\frac{\beta}{|y_w|}\log \pi_\theta(y_w|x) - \frac{\beta}{|y_l|}\log \pi_\theta(y_l|x) - \gamma\right)\right]
-$$
+```
 
 **长度归一化 $\frac{1}{|y|}$ 的作用**：把 reward 变成 per-token 量纲，直接对齐生成时的打分方式，并消除「序列越长总分越低」的偏置，从根上抑制长度膨胀。
 

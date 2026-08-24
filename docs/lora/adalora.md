@@ -20,17 +20,17 @@ title: AdaLoRA
 
 AdaLoRA 把每个模块的增量参数化为类 SVD 的三元组：
 
-$$
+```math
 \Delta W = P \Lambda Q, \qquad \Lambda = \mathrm{diag}(\lambda_1, \dots, \lambda_r)
-$$
+```
 
 其中 $P \in \mathbb{R}^{d \times r}$ 近似左奇异向量，$Q \in \mathbb{R}^{r \times k}$ 近似右奇异向量，$\Lambda$ 是对角的奇异值矩阵。$P$ 的每一列、$Q$ 的每一行、$\Lambda$ 的每一个对角元一起构成一个"秩-1 三元组"，它就是可以被增删的基本单位。
 
 为了让 $P$、$Q$ 真正具有奇异向量的正交性（否则奇异值的"重要性"含义会失真），AdaLoRA 加一个正交正则项：
 
-$$
+```math
 R(P, Q) = \lVert P^\top P - I \rVert_F^2 + \lVert Q Q^\top - I \rVert_F^2
-$$
+```
 
 **重要性打分。** 关键在于决定剪哪些三元组。AdaLoRA 不直接用奇异值 $\lambda_i$ 的大小（数值大不等于对损失贡献大），而是用基于敏感度的打分：对三元组中每个参数 $w$，其敏感度近似为 $|w \cdot \nabla_w \mathcal{L}|$，即"参数 × 梯度"的绝对值——这正是损失对该参数置零的一阶泰勒估计。由于单步梯度噪声很大，AdaLoRA 再对敏感度做指数滑动平均（平滑项 $\bar{I}$）并叠加一个不确定性项 $\bar{U}$，得到平滑后的重要性 $s_i$。一个三元组的重要性由它的 $\lambda_i$、$P$ 的对应列、$Q$ 的对应行三部分的得分汇总而成。
 

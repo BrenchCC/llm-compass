@@ -40,7 +40,9 @@ flowchart LR
 
 **3）文本条件注入**。文本经文本编码器变成一串 token 嵌入序列，作为交叉注意力的 Key/Value，而 U-Net 的图像特征作为 Query：
 
-$$\text{Attention}(Q,K,V)=\text{softmax}\!\left(\frac{QK^\top}{\sqrt{d}}\right)V,\quad Q=W_Q\,\varphi(z_t),\ \ K=W_K\,\tau(c),\ \ V=W_V\,\tau(c)$$
+```math
+\text{Attention}(Q,K,V)=\text{softmax}\!\left(\frac{QK^\top}{\sqrt{d}}\right)V,\quad Q=W_Q\,\varphi(z_t),\ \ K=W_K\,\tau(c),\ \ V=W_V\,\tau(c)
+```
 
 这里 $\tau(\cdot)$ 是文本编码器，$\varphi(z_t)$ 是 U-Net 中间特征。交叉注意力的好处是天然支持变长条件序列，且不局限于文本——LDM 原文也用它接入布局、语义图等条件（参见 [条件控制与定制](/aigc/control)）。文本编码器在 SD1.x 用 OpenAI CLIP 的 ViT-L/14 text encoder，SD2.x 换成 OpenCLIP ViT-H/14，相关原理见 [VLM 与多模态](/architecture/vlm)。
 
@@ -50,15 +52,19 @@ $$\text{Attention}(Q,K,V)=\text{softmax}\!\left(\frac{QK^\top}{\sqrt{d}}\right)V
 
 **Classifier Guidance（Dhariwal & Nichol 2021）**。额外训练一个在**带噪图像**上工作的分类器 $p_\phi(c\mid z_t)$，采样时用它的梯度去推动生成朝条件方向走：
 
-$$\tilde{\epsilon}=\epsilon_\theta(z_t,t)-s\,\sqrt{1-\bar\alpha_t}\;\nabla_{z_t}\log p_\phi(c\mid z_t)$$
+```math
+\tilde{\epsilon}=\epsilon_\theta(z_t,t)-s\,\sqrt{1-\bar\alpha_t}\;\nabla_{z_t}\log p_\phi(c\mid z_t)
+```
 
 缺点很明显：要额外训一个噪声鲁棒的分类器，且只能引导到分类器认识的类别，难以扩展到开放文本。
 
 **Classifier-Free Guidance（CFG，Ho & Salimans 2022）**。不需要分类器，而是训练时以一定概率（通常 10%~20%）把条件 $c$ 随机置空，让**同一个网络**同时学会条件预测 $\epsilon_c$ 与无条件预测 $\epsilon_\varnothing$。采样时把两者外推：
 
-$$\tilde{\epsilon}=\epsilon_\varnothing+s\,(\epsilon_c-\epsilon_\varnothing)$$
+```math
+\tilde{\epsilon}=\epsilon_\varnothing+s\,(\epsilon_c-\epsilon_\varnothing)
+```
 
-其中 $s$ 即 **guidance scale**（CFG scale）。$s=1$ 退化为普通条件采样；$s>1$ 放大"条件方向"，画面更贴合 prompt、对比度更高，但过大会过饱和、丢细节、降多样性。SD 推理常用 $s\in[5,12]$ 左右。CFG 几乎是当今所有文生图模型的标配。
+其中 $s$ 即 **guidance scale**（CFG scale）。$s=1$ 退化为普通条件采样；$s\gt 1$ 放大"条件方向"，画面更贴合 prompt、对比度更高，但过大会过饱和、丢细节、降多样性。SD 推理常用 $s\in[5,12]$ 左右。CFG 几乎是当今所有文生图模型的标配。
 
 | 维度 | Classifier Guidance | Classifier-Free Guidance |
 | --- | --- | --- |

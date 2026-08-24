@@ -23,15 +23,15 @@ DAPO 对每个病灶各开一刀，四项叠加后用 Qwen2.5-32B 在 AIME 2024 
 
 DAPO 的目标函数在 GRPO 骨架上改三处（解耦裁剪、动态采样约束、token 级归一化），并**去掉 KL 项**：
 
-$$
+```math
 \mathcal{J}_{\text{DAPO}}(\theta) = \mathbb{E}_{(x,a)\sim\mathcal{D},\ \{y_i\}_{i=1}^{G}\sim\pi_{\theta_{\text{old}}}(\cdot|x)} \left[ \frac{1}{\sum_{i=1}^{G}|y_i|} \sum_{i=1}^{G}\sum_{t=1}^{|y_i|} \min\Big( \rho_{i,t}\hat{A}_{i,t},\ \mathrm{clip}\big(\rho_{i,t},\ 1-\epsilon_{\text{low}},\ 1+\epsilon_{\text{high}}\big)\hat{A}_{i,t} \Big) \right]
-$$
+```
 
-$$
-\text{s.t.}\quad 0 < \big|\{\, y_i \mid \texttt{is\_equivalent}(a, y_i) \,\}\big| < G
-$$
+```math
+\text{s.t.}\quad 0 \lt  \big|\{\, y_i \mid \texttt{is\_equivalent}(a, y_i) \,\}\big| \lt  G
+```
 
-其中 $\rho_{i,t} = \frac{\pi_\theta(y_{i,t}\mid x, y_{i,<t})}{\pi_{\theta_{\text{old}}}(y_{i,t}\mid x, y_{i,<t})}$，优势沿用 GRPO 的组内标准化 $\hat{A}_{i,t} = \frac{r_i - \mathrm{mean}(\{r_j\}_{j=1}^G)}{\mathrm{std}(\{r_j\}_{j=1}^G)}$（序列级广播到每个 token）。逐项拆解：
+其中 $\rho_{i,t} = \frac{\pi_\theta(y_{i,t}\mid x, y_{i,\lt t})}{\pi_{\theta_{\text{old}}}(y_{i,t}\mid x, y_{i,\lt t})}$，优势沿用 GRPO 的组内标准化 $\hat{A}_{i,t} = \frac{r_i - \mathrm{mean}(\{r_j\}_{j=1}^G)}{\mathrm{std}(\{r_j\}_{j=1}^G)}$（序列级广播到每个 token）。逐项拆解：
 
 **1）Clip-Higher（解耦裁剪）**：把对称区间 $[1-\epsilon, 1+\epsilon]$ 解耦为 $[1-\epsilon_{\text{low}},\ 1+\epsilon_{\text{high}}]$，只抬高上界（实验取 $\epsilon_{\text{low}}=0.2$、$\epsilon_{\text{high}}=0.28$），给低概率 token 的概率上升留出空间，缓解熵坍缩；下界不动，避免把某些 token 的概率过猛地压向 0。
 
@@ -53,14 +53,14 @@ flowchart LR
 
 **4）Overlong Reward Shaping**：两个互补策略。其一 **Overlong Filtering**——对仅因超长被截断的样本直接 mask 掉 loss，不让"没写完"污染奖励信号。其二 **Soft Overlong Punishment**——在正确性奖励之外叠加分段长度惩罚：
 
-$$
+```math
 R_{\text{length}}(y)=
 \begin{cases}
 0, & |y| \le L_{\max}-L_{\text{cache}} \\[4pt]
-\dfrac{(L_{\max}-L_{\text{cache}})-|y|}{L_{\text{cache}}}, & L_{\max}-L_{\text{cache}} < |y| \le L_{\max} \\[8pt]
--1, & |y| > L_{\max}
+\dfrac{(L_{\max}-L_{\text{cache}})-|y|}{L_{\text{cache}}}, & L_{\max}-L_{\text{cache}} \lt  |y| \le L_{\max} \\[8pt]
+-1, & |y| \gt  L_{\max}
 \end{cases}
-$$
+```
 
 在最后 $L_{\text{cache}}$ 个 token 的缓冲区内惩罚从 0 线性滑到 $-1$（实验取 $L_{\max}=16384$、$L_{\text{cache}}=4096$，最大生成长度 20480）。
 

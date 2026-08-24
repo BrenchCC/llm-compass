@@ -29,9 +29,9 @@ title: 训练系统与分布式总览
 
 这还没算第四份——**激活（activation）**。激活显存与 batch、序列长度、层数线性相关，长上下文场景下常常反超模型状态，成为真正的瓶颈。
 
-$$
+```math
 M_{\text{total}} \approx \underbrace{16\Psi}_{\text{参数+梯度+优化器}} + \underbrace{M_{\text{act}}(b, s, L)}_{\text{激活}}
-$$
+```
 
 ### 通信墙
 

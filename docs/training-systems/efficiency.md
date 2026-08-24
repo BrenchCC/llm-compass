@@ -29,9 +29,9 @@ fp16 与 bf16 的关键差别在动态范围：
 
 fp16 只有 5 位指数，反向传播中大量小梯度会**下溢为 0**。论文给出的解法是 **loss scaling**：把损失乘以一个放大因子 $S$，
 
-$$
+```math
 \nabla_\theta (S \cdot \mathcal{L}) = S \cdot \nabla_\theta \mathcal{L}
-$$
+```
 
 使小梯度移入 fp16 可表示区间；更新前再除回 $S$。工程上常用**动态 loss scaling**——无溢出则周期性放大 $S$，一旦检测到 Inf/NaN 立即缩小并跳过该步。bf16 因为保留了 fp32 的 8 位指数，动态范围足够，通常无需 loss scaling，代价是尾数更少、精度略低。A100 及之后的硬件上，bf16 已成为 LLM 训练的默认选择。
 

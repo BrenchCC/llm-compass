@@ -58,7 +58,9 @@ ToT 的 BFS/DFS 是相对简单的搜索；当分支因子大、深度深时，�
 
 不是所有收益都要靠显式搜索。**Self-Consistency**（Wang et al., 2022, arXiv:2203.11171）是最轻量的一档：对同一道题用温度采样生成 $N$ 条独立 CoT，丢掉中间过程、只对**最终答案**做多数投票。
 
-$$\hat{a} = \arg\max_{a} \sum_{i=1}^{N} \mathbb{1}[\text{answer}(r_i) = a]$$
+```math
+\hat{a} = \arg\max_{a} \sum_{i=1}^{N} \mathbb{1}[\text{answer}(r_i) = a]
+```
 
 它的前提是「一道复杂题往往有多条不同推理路径通向同一个正确答案」，因此正确答案在采样里更容易形成共识。原文在 GSM8K、SVAMP、AQuA 等基准上报告了显著提升（如 GSM8K +17.9%，数字以原文为准）。
 

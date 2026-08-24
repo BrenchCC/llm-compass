@@ -52,9 +52,9 @@ flowchart LR
 
 3. **KL 约束的策略更新**：为对抗分布漂移，更新目标在最大化期望奖励的同时，约束新策略不要偏离参考策略 $\pi_{\text{ref}}$ 太远：
 
-$$
+```math
 \max_{\theta}\ \mathbb{E}_{\tau\sim\pi_\theta}\big[r(\tau)\big]\ -\ \beta\, \mathrm{KL}\!\big(\pi_\theta \,\|\, \pi_{\text{ref}}\big)
-$$
+```
 
 并配合**经验回放**——把历史成功轨迹缓存复用，按与当前策略的契合度过滤，既提样本效率又防遗忘。结果上，WebArena-Lite 把 Llama-3.1-8B 从 4.8% 拉到 42.4%、GLM-4-9B 从 6.1% 拉到 43%，超过 GPT-4-Turbo（17.6%）与 GPT-4o（13.9%），也超过此前开源 SOTA AutoWebGLM（18.2%）。
 

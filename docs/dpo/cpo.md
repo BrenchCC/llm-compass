@@ -26,9 +26,9 @@ CPO 的两步走：(1) 用一个均匀分布近似 $\pi_{\text{ref}}$，从数�
 
 CPO 的损失由对比项和 SFT 项相加：
 
-$$
+```math
 \mathcal{L}_{\text{CPO}} = \underbrace{-\,\mathbb{E}_{(x,y_w,y_l)}\!\left[\log \sigma\big(\beta \log \pi_\theta(y_w|x) - \beta \log \pi_\theta(y_l|x)\big)\right]}_{\mathcal{L}_{\text{prefer}}} \;\; \underbrace{-\;\mathbb{E}_{(x,y_w)}\!\left[\log \pi_\theta(y_w|x)\right]}_{\mathcal{L}_{\text{SFT}}}
-$$
+```
 
 **从 DPO 推导上界（uniform reference 假设）**：在 DPO 的隐式 reward $\beta\log\frac{\pi_\theta}{\pi_{\text{ref}}}$ 中，若把 $\pi_{\text{ref}}$ 取为均匀分布（对所有 $y$ 是常数），则 reward 差里的 $-\beta\log\pi_{\text{ref}}(y_w)+\beta\log\pi_{\text{ref}}(y_l)$ 退化为常数，整条 reference 项消失，对比项化简为只含 $\pi_\theta$ 的形式。作者进一步论证这是真实 DPO 目标的一个上界（近似），因此最小化 $\mathcal{L}_{\text{prefer}}$ 是在优化 DPO 目标的代理。
 

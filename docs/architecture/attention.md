@@ -31,7 +31,9 @@ flowchart LR
 
 设头维度为 $d_h$、层数为 $l$，每个 token 的 KV cache 大小（元素数，不含 batch）：
 
-$$\text{MHA: } 2 \cdot n_h \cdot d_h \cdot l$$
+```math
+\text{MHA: } 2 \cdot n_h \cdot d_h \cdot l
+```
 
 其中因子 2 来自 K 和 V 各一份。质量最好，但 KV cache 最大。
 
@@ -39,7 +41,9 @@ $$\text{MHA: } 2 \cdot n_h \cdot d_h \cdot l$$
 
 Shazeer 在 *Fast Transformer Decoding: One Write-Head is All You Need*（2019, arXiv:1911.02150）提出 **多查询注意力**（Multi-Query Attention）：保留 $n_h$ 个 query 头，但让 **所有 query 头共享同一组 K、V**（KV 头数 = 1）。
 
-$$\text{MQA: } 2 \cdot d_h \cdot l$$
+```math
+\text{MQA: } 2 \cdot d_h \cdot l
+```
 
 相比 MHA，KV cache 缩小到 $1/n_h$。decode 访存压力骤降，吞吐大幅提升。代价是表达能力受限——所有头共用一组 KV，原文指出会带来 **轻微的质量下降**，且对训练稳定性有一定影响。
 
@@ -49,7 +53,9 @@ Ainslie 等人在 *GQA: Training Generalized Multi-Query Transformer Models from
 
 把 $n_h$ 个 query 头分成 $n_g$ 组（$1 \le n_g \le n_h$），**同组内的 query 头共享一组 K、V**：
 
-$$\text{每组 query 头数} = \frac{n_h}{n_g}, \qquad \text{KV cache: } 2 \cdot n_g \cdot d_h \cdot l$$
+```math
+\text{每组 query 头数} = \frac{n_h}{n_g}, \qquad \text{KV cache: } 2 \cdot n_g \cdot d_h \cdot l
+```
 
 两个端点正是已知结构：
 
@@ -64,17 +70,19 @@ MQA/GQA 都在 "减少 KV 头数" 这一维度上做文章。DeepSeek-V2（2024,
 
 核心是 **低秩 KV 联合压缩**。对输入 $h_t$，先投影到一个维度远小于 $n_h d_h$ 的潜向量 $c_t^{KV}$，缓存时只存这个潜向量；推理时再用上投影矩阵把它 "解压" 回每个头的 K、V：
 
-$$
+```math
 c_t^{KV} = W^{DKV}\, h_t \in \mathbb{R}^{d_c}, \qquad
 k_t^{C} = W^{UK}\, c_t^{KV}, \qquad
 v_t^{C} = W^{UV}\, c_t^{KV}
-$$
+```
 
 其中 $d_c \ll n_h d_h$ 是压缩维度，$W^{DKV}$ 为下投影（down-projection），$W^{UK}, W^{UV}$ 为上投影（up-projection）。**只有 $c_t^{KV}$ 进入 KV cache**，K、V 在用时现解压。Query 侧也做了类似的低秩压缩以省训练显存。
 
 一个工程关键点：标准 RoPE 与这种 "缓存潜向量、用时再解压" 不兼容（位置旋转无法被吸收进上投影矩阵）。MLA 因此采用 **解耦 RoPE（decoupled RoPE）**：额外引入一组承载位置信息的 query 分量和一个 **所有头共享的带 RoPE 的 key**，与压缩部分拼接。于是 MLA 每 token 缓存的是 $c_t^{KV}$（维度 $d_c$）加上共享的 RoPE key（每头维度 $d_h^R$）：
 
-$$\text{MLA: } (d_c + d_h^R)\cdot l$$
+```math
+\text{MLA: } (d_c + d_h^R)\cdot l
+```
 
 按原文 DeepSeek-V2 的配置（$d_c = 4 d_h$、$d_h^R = d_h/2$），这约等于 $\tfrac{9}{2} d_h \cdot l$，相当于一个 KV 头数约为 2.25 的 GQA，**但质量上 DeepSeek-V2 报告可超过 MHA**（以原文为准）。原文给出的整体收益：相比 DeepSeek 67B，**KV cache 减少约 93.3%、最大生成吞吐提升约 5.76 倍**（以原文为准）。
 
@@ -87,7 +95,7 @@ $$\text{MLA: } (d_c + d_h^R)\cdot l$$
 | 方法 | KV 头数 | 每 token KV cache（每层元素数） | 相对 MHA | 质量 |
 | --- | --- | --- | --- | --- |
 | MHA | $n_h$ | $2\, n_h\, d_h$ | $1\times$ | 基线（最好） |
-| GQA | $n_g$（$1\!<\!n_g\!<\!n_h$） | $2\, n_g\, d_h$ | $n_g/n_h$ | 接近 MHA |
+| GQA | $n_g$（$1\!\lt \!n_g\!\lt \!n_h$） | $2\, n_g\, d_h$ | $n_g/n_h$ | 接近 MHA |
 | MQA | $1$ | $2\, d_h$ | $1/n_h$ | 轻微下降 |
 | MLA | —（低秩） | $(d_c + d_h^R) \approx \tfrac{9}{2} d_h$ | $\approx 2.25/n_h$ | 报告可 $\ge$ MHA |
 

@@ -5,6 +5,8 @@ import {
   LarkClient,
   buildContentTree,
   buildRenameMap,
+  canUseTopologyFastPath,
+  computeTopologyHash,
   computeRenderHash,
   extractSidebarLinks,
   parseMarkdownDocument,
@@ -152,6 +154,116 @@ test("releaseDuplicateMappings keeps one active owner and releases duplicate cla
   })
 })
 
+test("computeTopologyHash changes only when topology-affecting fields change", () => {
+  const tree = [
+    {
+      key: "docs",
+      order: 0,
+      parentKey: null,
+      sourcePath: "docs/index.md",
+      synthetic: false,
+      title: "LLM Compass"
+    },
+    {
+      key: "docs/guide",
+      order: 1,
+      parentKey: "docs",
+      sourcePath: "docs/guide/index.md",
+      synthetic: false,
+      title: "Guide"
+    }
+  ]
+  const hash = computeTopologyHash(tree)
+  const contentOnlyChange = structuredClone(tree)
+  contentOnlyChange[1].renderHash = "changed-body"
+  const reordered = structuredClone(tree)
+  reordered[1].order = 0
+
+  assert.equal(computeTopologyHash(contentOnlyChange), hash)
+  assert.notEqual(computeTopologyHash(reordered), hash)
+  assert.notEqual(
+    computeTopologyHash(tree.map((node) => (
+      node.key === "docs/guide" ? {...node, title: "Guides"} : node
+    ))),
+    hash
+  )
+})
+
+test("canUseTopologyFastPath requires a complete idle manifest and matching topology", () => {
+  const tree = [
+    {
+      key: "docs",
+      order: 0,
+      parentKey: null,
+      sourcePath: "docs/index.md",
+      synthetic: false,
+      title: "LLM Compass"
+    },
+    {
+      key: "docs/guide",
+      order: 1,
+      parentKey: "docs",
+      sourcePath: "docs/guide/index.md",
+      synthetic: false,
+      title: "Guide"
+    }
+  ]
+  const state = {
+    lastSyncedCommit: "abc123",
+    pages: {
+      docs: {
+        nodeToken: "root-token",
+        objToken: "root-obj",
+        parentKey: null,
+        sourcePath: "docs/index.md",
+        title: "LLM Compass"
+      },
+      "docs/guide": {
+        nodeToken: "guide-token",
+        objToken: "guide-obj",
+        parentKey: "docs",
+        sourcePath: "docs/guide/index.md",
+        title: "Guide"
+      }
+    },
+    status: "idle",
+    topologyHash: computeTopologyHash(tree)
+  }
+  const input = {
+    mode: "incremental",
+    rootNodeToken: "root-token",
+    state,
+    tree
+  }
+
+  assert.equal(canUseTopologyFastPath(input), true)
+  assert.equal(canUseTopologyFastPath({...input, mode: "full"}), false)
+  assert.equal(
+    canUseTopologyFastPath({...input, rootNodeToken: "different-root"}),
+    false
+  )
+  assert.equal(
+    canUseTopologyFastPath({...input, state: {...state, status: "in_progress"}}),
+    false
+  )
+  assert.equal(
+    canUseTopologyFastPath({...input, state: {...state, topologyHash: "stale"}}),
+    false
+  )
+  const incompleteState = structuredClone(state)
+  delete incompleteState.pages["docs/guide"].objToken
+  assert.equal(
+    canUseTopologyFastPath({...input, state: incompleteState}),
+    false
+  )
+  const duplicateTokenState = structuredClone(state)
+  duplicateTokenState.pages["docs/guide"].nodeToken = "root-token"
+  assert.equal(
+    canUseTopologyFastPath({...input, state: duplicateTokenState}),
+    false
+  )
+})
+
 test("transformMarkdown converts VitePress syntax, resources, formulas, diagrams, and links", () => {
   const source = [
     "---",
@@ -167,8 +279,16 @@ test("transformMarkdown converts VitePress syntax, resources, formulas, diagrams
     "![架构](/papers/demo/arch.png)",
     "",
     "```math",
-    "a < b & c > d",
+    String.raw`a < b & c > d \frac{x}{y}`,
     "```",
+    "",
+    "$$",
+    String.raw`\mathcal{L} =`,
+    String.raw`\mathbb{E}[x]`,
+    "",
+    "$$",
+    "",
+    String.raw`$$ \mathrm{KL}(p \| q) $$`,
     "",
     "```mermaid",
     "graph LR",
@@ -196,7 +316,22 @@ test("transformMarkdown converts VitePress syntax, resources, formulas, diagrams
   assert.match(result.content, /https:\/\/feishu\.cn\/wiki\/wikcnNotation/)
   assert.match(result.content, /规模 \\<50k/)
   assert.match(result.content, /!\[架构\]\(@\.\/docs\/public\/papers\/demo\/arch\.png\)/)
-  assert.match(result.content, /<latex>a &lt; b &amp; c &gt; d<\/latex>/)
+  assert.ok(
+    result.content.includes(
+      String.raw`<latex>a &lt; b &amp; c &gt; d \\frac{x}{y}</latex>`
+    )
+  )
+  assert.ok(
+    result.content.includes(
+      String.raw`<latex>\\mathcal{L} = \\mathbb{E}[x]</latex>`
+    )
+  )
+  assert.ok(
+    result.content.includes(
+      String.raw`<latex>\\mathrm{KL}(p \\| q)</latex>`
+    )
+  )
+  assert.doesNotMatch(result.content, /^\s*\$\$/m)
   assert.match(result.content, /<whiteboard type="mermaid" path="@\.\/\.feishu-sync-tmp\/mermaid\/[a-f0-9]{64}\.mmd"><\/whiteboard>/)
   assert.match(result.content, /\[不转换\]\(\/guide\/notation\) <raw>/)
   assert.equal(result.mermaidFiles.length, 1)

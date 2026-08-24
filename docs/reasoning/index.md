@@ -24,7 +24,9 @@ title: 推理模型（Reasoning）总览
 
 直观地说，推理模型把「思考」显式化成可消耗算力的 token 序列，于是出现了一条新的扩展曲线：在固定模型参数下，单题正确率随推理时算力 $C_{\text{test}}$ 增长。设单题准确率为 $\mathrm{Acc}$，经验上
 
-$$\mathrm{Acc} \approx f(\log C_{\text{test}}),$$
+```math
+\mathrm{Acc} \approx f(\log C_{\text{test}}),
+```
 
 在相当大的算力区间内近似单调递增——这正是「test-time scaling」一词的由来。
 

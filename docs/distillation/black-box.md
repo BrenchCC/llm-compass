@@ -22,15 +22,15 @@ Kim & Rush（2016）在 NMT 上把这件事形式化：词级 KD 只是在数据
 
 序列级 KD 的理想目标是让学生匹配教师的序列分布（教师记为 $\pi_{\text{T}}$，学生为 $\pi_\theta$）：
 
-$$
+```math
 \mathcal{L}_{\text{seq-KD}}(\theta) = -\,\mathbb{E}_{x \sim \mathbb{D}} \left[ \sum_{y \in \mathcal{Y}} \pi_{\text{T}}(y \mid x)\, \log \pi_\theta(y \mid x) \right]
-$$
+```
 
 对全序列空间 $\mathcal{Y}$ 求和不可行，用教师解码出的序列 $\hat{y}$（beam search 近似众数，或温度采样）替代期望：
 
-$$
+```math
 \mathcal{L}_{\text{seq-KD}}(\theta) \;\approx\; -\,\mathbb{E}_{x \sim \mathbb{D}} \left[ \log \pi_\theta(\hat{y} \mid x) \right], \qquad \hat{y} \sim \pi_{\text{T}}(\cdot \mid x)
-$$
+```
 
 即对教师样本的标准 SFT 负对数似然（参见[符号约定](/guide/notation)）。黑盒蒸馏的全部方法差异，都体现在 $\hat{y}$ 怎么造、怎么过滤、怎么配比上：
 

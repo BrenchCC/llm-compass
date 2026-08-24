@@ -16,11 +16,11 @@ Causal attention 中，第 $t$ 步的输出要对前缀所有 token 的 $K, V$ �
 
 代价是显存。标准（MHA）模型的 KV cache 大小：
 
-$$
+```math
 \text{每 token 字节数} = \underbrace{2}_{K \text{和} V} \times L \times \underbrace{n_h d_h}_{=\,\text{hidden\_size}} \times p,
 \qquad
 \text{总显存} = b \times s \times \text{每 token 字节数}
-$$
+```
 
 其中 $L$ 为层数、$n_h$ 头数、$d_h$ 每头维度、$p$ 为精度字节数（FP16 为 2）、$b$ 为 batch size、$s$ 为序列长度。两个例子：
 
@@ -41,10 +41,10 @@ Prefill 阶段对 prompt $x$ 的所有 token 并行计算 K/V 并整批写入 ca
 
 **MLA**（Multi-head Latent Attention，DeepSeek-V2，2024）走得更远：对 K、V 做低秩联合压缩，只缓存一个共享的低维 latent 向量：
 
-$$
+```math
 c_t^{KV} = W^{DKV} h_t \in \mathbb{R}^{d_c}, \qquad
 k_t^C = W^{UK} c_t^{KV}, \quad v_t^C = W^{UV} c_t^{KV}, \qquad d_c \ll n_h d_h
-$$
+```
 
 推理时上投影矩阵 $W^{UK}$、$W^{UV}$ 可被吸收进 query/输出投影，无需显式重建 K/V。一个细节：标准 RoPE 对 key 的逐位置旋转与这一矩阵吸收技巧不兼容，因此 MLA 采用**解耦 RoPE**——单独用一小部分维度（$d_R$）携带旋转位置信息，与 latent 部分拼接缓存。DeepSeek-V2 的配置：$d_c = 512 = 4 d_h$、$d_R = 64$，每 token 每层只缓存 $d_c + d_R = 576$ 个元素，而其 MHA 等价配置（128 头 × $d_h$=128）需要 $2 \times 128 \times 128 = 32768$ 个——压缩到约 1/57，论文称其 KV cache 体积仅相当于 2.25 组的 GQA。整机效果：DeepSeek-V2 相比 DeepSeek 67B，KV cache 减少 93.3%，最大生成吞吐提升至 5.76 倍；且论文报告 MLA 性能**优于** MHA，并非以质量换显存。
 

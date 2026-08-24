@@ -19,19 +19,19 @@ GRPO 的洞察是：critic 存在的唯一目的是给优势估计提供一个 b
 
 对每个 prompt $x$ 采样 $G$ 个回答 $\{y_1,\dots,y_G\}$，各自得到 reward $\{r_1,\dots,r_G\}$（来自 [RM](/rlhf/reward-model) 或规则可验证奖励）。**组内标准化优势**：
 
-$$
+```math
 \hat{A}_i = \frac{r_i - \mathrm{mean}(\{r_1,\dots,r_G\})}{\mathrm{std}(\{r_1,\dots,r_G\})}
-$$
+```
 
 这是一个序列级标量——同一回答 $y_i$ 内的每个 token 共享同一个 $\hat{A}_i$（即把序列级优势广播到每个 token）。
 
 **目标函数**（PPO 式 clip + 显式 KL 项）：
 
-$$
+```math
 \mathcal{L}_{\text{GRPO}} = -\,\mathbb{E}\Bigg[ \frac{1}{G}\sum_{i=1}^{G} \frac{1}{|y_i|}\sum_{t=1}^{|y_i|} \min\!\big( \rho_{i,t}\hat{A}_i,\; \mathrm{clip}(\rho_{i,t}, 1-\epsilon, 1+\epsilon)\hat{A}_i \big) \;-\; \beta\,\mathbb{D}_{\text{KL}}\big[\pi_\theta \,\|\, \pi_{\text{ref}}\big] \Bigg]
-$$
+```
 
-其中 $\rho_{i,t} = \dfrac{\pi_\theta(y_{i,t}|x,y_{i,<t})}{\pi_{\theta_{\text{old}}}(y_{i,t}|x,y_{i,<t})}$ 是 token 级重要性比值。
+其中 $\rho_{i,t} = \dfrac{\pi_\theta(y_{i,t}|x,y_{i,\lt t})}{\pi_{\theta_{\text{old}}}(y_{i,t}|x,y_{i,\lt t})}$ 是 token 级重要性比值。
 
 与 PPO 的两个关键差异：
 1. **优势来自组内标准化**，不用 GAE、不用 critic。
@@ -39,9 +39,9 @@ $$
 
 **KL 的无偏估计器（k3）**：GRPO 用一个低方差、恒非负的估计器：
 
-$$
+```math
 \mathbb{D}_{\text{KL}}[\pi_\theta\|\pi_{\text{ref}}] \approx \frac{\pi_{\text{ref}}(y_{i,t}|\cdot)}{\pi_\theta(y_{i,t}|\cdot)} - \log\frac{\pi_{\text{ref}}(y_{i,t}|\cdot)}{\pi_\theta(y_{i,t}|\cdot)} - 1
-$$
+```
 
 它逐 token 计算、期望等于真实 KL 且始终 $\geq 0$，比朴素的 $\log$ 比值估计方差更小。
 

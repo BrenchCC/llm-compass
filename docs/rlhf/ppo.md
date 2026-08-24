@@ -21,33 +21,33 @@ PPO 的思路是：把"别走太远"这个约束**塞进损失函数本身**，�
 
 **奖励构成**：奖励模型 $r_\phi$ 只在序列末端给一个标量分；但 KL 约束需要落到每个 token。标准做法是把奖励写成逐 token 形式——中间 token 只有 KL 惩罚，末端 token 额外加 RM 分：
 
-$$
+```math
 r_t = -\beta\,\log\frac{\pi_\theta(y_t|s_t)}{\pi_{\text{ref}}(y_t|s_t)} + \underbrace{r_\phi(x,y)\cdot \mathbb{1}[t = T]}_{\text{仅末端 token}}
-$$
+```
 
 把 KL 写进 reward 而非显式加在 loss 上，是 InstructGPT 的经典做法（也称 per-token KL penalty）。
 
 **优势估计（GAE）**：用 critic $V(s_t)$ 配合 TD 残差做指数加权，平衡偏差与方差（Schulman et al., 2015, arXiv:1506.02438）：
 
-$$
+```math
 A_t = \sum_{l=0}^{\infty} (\gamma \lambda)^l \,\delta_{t+l}, \qquad \delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)
-$$
+```
 
 $\lambda=1$ 退化为蒙特卡洛回报（高方差低偏差），$\lambda=0$ 退化为单步 TD（低方差高偏差）。
 
 **裁剪策略目标（token 级）**：
 
-$$
+```math
 \mathcal{L}_{\text{PPO}}^{\text{clip}} = -\,\mathbb{E}_t \Big[ \min \big( \rho_t A_t, \; \mathrm{clip}(\rho_t,\, 1-\epsilon,\, 1+\epsilon)\, A_t \big) \Big], \qquad \rho_t = \frac{\pi_\theta(y_t|s_t)}{\pi_{\theta_{\text{old}}}(y_t|s_t)}
-$$
+```
 
-$\min$ 与 clip 的组合保证：当 $A_t>0$（这个 token 是好动作）时增大其概率，但比值涨到 $1+\epsilon$ 就封顶；当 $A_t<0$ 时减小其概率，但跌到 $1-\epsilon$ 也封底。即"好的别奖太多，坏的别罚太狠"。
+$\min$ 与 clip 的组合保证：当 $A_t\gt 0$（这个 token 是好动作）时增大其概率，但比值涨到 $1+\epsilon$ 就封顶；当 $A_t\lt 0$ 时减小其概率，但跌到 $1-\epsilon$ 也封底。即"好的别奖太多，坏的别罚太狠"。
 
 **Critic 损失**：value head 回归到 GAE 目标 $V_{\text{targ}} = A_t + V_{\text{old}}(s_t)$，并常对 value 也做裁剪以稳定：
 
-$$
+```math
 \mathcal{L}_{\text{value}} = \mathbb{E}_t\Big[\max\big((V_\theta(s_t)-V_{\text{targ}})^2,\;(\mathrm{clip}(V_\theta,V_{\text{old}}\pm\epsilon_v)-V_{\text{targ}})^2\big)\Big]
-$$
+```
 
 四个模型同时存在：**policy**（训练）、**critic**（训练）、**reference**（冻结，算 KL）、**reward model**（冻结，打分）。这是 PPO 显存开销大的根源。
 

@@ -9,6 +9,8 @@ import {
   buildContentTree,
   buildRenameMap,
   buildRouteMap,
+  canUseTopologyFastPath,
+  computeTopologyHash,
   computeRenderHash,
   extractSidebarLinks,
   parseMarkdownDocument,
@@ -413,6 +415,23 @@ async function buildRollbackSnapshot({
       }])
     ),
     spaceId
+  }
+}
+
+function buildFastPathSnapshot({spaceId, state}) {
+  return {
+    capturedAt: new Date().toISOString(),
+    childOrderByParentToken: {},
+    pages: Object.fromEntries(
+      Object.entries(state.pages || {}).map(([key, entry]) => [key, {
+        nodeToken: entry.nodeToken,
+        objToken: entry.objToken,
+        parentKey: entry.parentKey,
+        title: entry.title
+      }])
+    ),
+    spaceId,
+    topologyFastPath: true
   }
 }
 
@@ -872,6 +891,7 @@ async function sync({mode}) {
   const sidebarLinks = await readSidebarLinks()
   const routeTree = buildContentTree(sourcePages, sidebarLinks)
   const routeMap = buildRouteMap(routeTree)
+  const topologyHash = computeTopologyHash(routeTree)
   const commit = runGit(["rev-parse", "HEAD"])
   await prepareTempRoot()
 
@@ -907,68 +927,105 @@ async function sync({mode}) {
     : ""
   const state = parseState(stateContent)
   state.archives ||= []
-  const rollbackSnapshot = await buildRollbackSnapshot({
-    client,
-    extraParentTokens: existingSystemNode ? [existingSystemNode.node_token] : [],
-    rootChildren,
-    routeTree,
-    spaceId,
-    state
-  })
-  await initializeRecoveryFiles(rollbackSnapshot)
-  state.status = "in_progress"
-  state.targetCommit = commit
-  if (existingStateNode) {
-    await writeState(client, existingStateNode, state)
-  }
+  const stateNodeUnderSystem = existingStateNode && existingSystemChildren.some(
+    (node) => node.node_token === existingStateNode.node_token
+  )
+  const existingArchiveNodes = existingSystemChildren.filter(
+    (node) => node.title === ARCHIVE_TITLE
+  )
+  const topologyFastPath = (
+    rootDetails.title === "LLM Compass" &&
+    existingSystemNode !== null &&
+    stateNodeUnderSystem &&
+    existingArchiveNodes.length === 1 &&
+    canUseTopologyFastPath({
+      mode,
+      rootNodeToken,
+      state,
+      tree: routeTree
+    })
+  )
 
-  const systemNode = await ensureHelperNode({
-    children: rootChildren,
-    client,
-    parentNodeToken: rootNodeToken,
-    spaceId,
-    title: SYSTEM_TITLE
-  })
-  const systemChildren = await listChildren(client, spaceId, systemNode.node_token)
-  const stateNode = await ensureHelperNode({
-    children: systemChildren,
-    client,
-    parentNodeToken: systemNode.node_token,
-    sourceChildren: rootChildren,
-    spaceId,
-    title: STATE_TITLE
-  })
-  if (!existingStateNode) {
+  let stateNode = existingStateNode
+  let topology = {
+    releasedDuplicates: [],
+    renamed: 0,
+    staleRoots: []
+  }
+  let orderReport = {movedNodes: 0, reorderedParents: 0}
+
+  if (topologyFastPath) {
+    await initializeRecoveryFiles(buildFastPathSnapshot({spaceId, state}))
+    state.status = "in_progress"
+    state.targetCommit = commit
+    await writeState(client, stateNode, state)
+  } else {
+    const rollbackSnapshot = await buildRollbackSnapshot({
+      client,
+      extraParentTokens: existingSystemNode ? [existingSystemNode.node_token] : [],
+      rootChildren,
+      routeTree,
+      spaceId,
+      state
+    })
+    await initializeRecoveryFiles(rollbackSnapshot)
+    state.status = "in_progress"
+    state.targetCommit = commit
+    if (existingStateNode) {
+      await writeState(client, existingStateNode, state)
+    }
+
+    const systemNode = await ensureHelperNode({
+      children: rootChildren,
+      client,
+      parentNodeToken: rootNodeToken,
+      spaceId,
+      title: SYSTEM_TITLE
+    })
+    const systemChildren = existingSystemNode
+      ? existingSystemChildren
+      : []
+    stateNode = await ensureHelperNode({
+      children: systemChildren,
+      client,
+      parentNodeToken: systemNode.node_token,
+      sourceChildren: rootChildren,
+      spaceId,
+      title: STATE_TITLE
+    })
+    if (!existingStateNode) {
+      await writeState(client, stateNode, state)
+    }
+    const archiveNode = await ensureHelperNode({
+      children: systemChildren,
+      client,
+      parentNodeToken: systemNode.node_token,
+      sourceChildren: rootChildren,
+      spaceId,
+      title: ARCHIVE_TITLE
+    })
+    topology = await reconcileTopology({
+      archiveNode,
+      client,
+      commit,
+      rootDetails,
+      routeTree,
+      spaceId,
+      state
+    })
+    state.pages = topology.pages
+    orderReport = await reconcileSiblingOrder({
+      archiveNode,
+      client,
+      englishRoot: state.pages["docs/en"],
+      pages: state.pages,
+      routeTree,
+      spaceId,
+      systemNode
+    })
+    state.topologyHash = topologyHash
     await writeState(client, stateNode, state)
   }
-  const archiveNode = await ensureHelperNode({
-    children: systemChildren,
-    client,
-    parentNodeToken: systemNode.node_token,
-    sourceChildren: rootChildren,
-    spaceId,
-    title: ARCHIVE_TITLE
-  })
-  const topology = await reconcileTopology({
-    archiveNode,
-    client,
-    commit,
-    rootDetails,
-    routeTree,
-    spaceId,
-    state
-  })
-  state.pages = topology.pages
-  const orderReport = await reconcileSiblingOrder({
-    archiveNode,
-    client,
-    englishRoot: state.pages["docs/en"],
-    pages: state.pages,
-    routeTree,
-    spaceId,
-    systemNode
-  })
-  await writeState(client, stateNode, state)
 
   let contentReport
   try {
@@ -1000,6 +1057,7 @@ async function sync({mode}) {
     renamed: topology.renamed,
     skipped: contentReport.skipped,
     syntheticNodes: routeTree.filter((node) => node.synthetic).length,
+    topologyMode: topologyFastPath ? "cached" : "reconciled",
     totalNodes: routeTree.length,
     updated: contentReport.updated,
     warnings: contentReport.warnings

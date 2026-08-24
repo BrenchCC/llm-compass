@@ -27,9 +27,9 @@ SFT 的作用是**奠定能力与行为基线**：注入指令遵循、格式规
 
 SFT 的训练目标就是标准的自回归负对数似然（NLL），与预训练同形，但**只在回答 token 上计算 loss**：
 
-$$
-\mathcal{L}_{\text{SFT}}(\theta) = -\mathbb{E}_{(x, y) \sim \mathcal{D}} \left[ \sum_{t=1}^{|y|} \log \pi_\theta(y_t \mid x, y_{<t}) \right]
-$$
+```math
+\mathcal{L}_{\text{SFT}}(\theta) = -\mathbb{E}_{(x, y) \sim \mathcal{D}} \left[ \sum_{t=1}^{|y|} \log \pi_\theta(y_t \mid x, y_{\lt t}) \right]
+```
 
 这里 $x$ 是 prompt，$y=(y_1,\dots,y_{|y|})$ 是目标回答，$\pi_\theta$ 是被微调的模型。prompt 部分的 token 参与 attention（作为上文），但不进入求和——这就是 [Loss Masking](/sft/loss-masking) 要解决的核心问题。表面上 SFT 和预训练只差一个 mask，但实践上两者在数据分布（结构化对话 vs 自由文本）、学习率（小 1~2 个数量级）、epoch 数（通常 1~3 而非单遍海量数据）、以及模板格式（special token 标记角色）上都有本质区别。
 

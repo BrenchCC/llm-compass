@@ -259,6 +259,62 @@ export function buildContentTree(pages, navigationLinks = []) {
   })
 }
 
+export function computeTopologyHash(tree) {
+  const topology = [...tree]
+    .sort((left, right) => left.key.localeCompare(right.key, "en"))
+    .map((node) => ({
+      key: node.key,
+      order: Number.isFinite(node.order) ? node.order : null,
+      parentKey: node.parentKey || null,
+      sourcePath: node.sourcePath || null,
+      synthetic: node.synthetic === true,
+      title: node.title
+    }))
+  return crypto
+    .createHash("sha256")
+    .update("feishu-topology-v1\0")
+    .update(JSON.stringify(topology))
+    .digest("hex")
+}
+
+export function canUseTopologyFastPath({mode, rootNodeToken, state, tree}) {
+  if (
+    mode !== "incremental" ||
+    state?.status !== "idle" ||
+    !state.lastSyncedCommit ||
+    state.topologyHash !== computeTopologyHash(tree)
+  ) {
+    return false
+  }
+
+  const pages = state.pages || {}
+  if (Object.keys(pages).length !== tree.length) {
+    return false
+  }
+
+  const nodeTokens = new Set()
+  for (const node of tree) {
+    const entry = pages[node.key]
+    if (
+      !entry ||
+      typeof entry.nodeToken !== "string" ||
+      !entry.nodeToken ||
+      typeof entry.objToken !== "string" ||
+      !entry.objToken ||
+      (entry.parentKey || null) !== (node.parentKey || null) ||
+      (entry.sourcePath || null) !== (node.sourcePath || null) ||
+      (entry.synthetic === true) !== (node.synthetic === true) ||
+      entry.title !== node.title ||
+      nodeTokens.has(entry.nodeToken)
+    ) {
+      return false
+    }
+    nodeTokens.add(entry.nodeToken)
+  }
+
+  return pages.docs?.nodeToken === rootNodeToken
+}
+
 export function planSiblingReorder(currentTokens, desiredTokens) {
   if (new Set(currentTokens).size !== currentTokens.length) {
     throw new Error("Current sibling list contains duplicate node tokens")
@@ -484,6 +540,39 @@ function normalizeMermaid(content) {
   }).join("\n")
 }
 
+function renderLatex(content) {
+  const normalizedContent = content.trim().replace(/\s*\n\s*/g, " ")
+  const escapedContent = escapeXml(normalizedContent).replace(/\\/g, "\\\\")
+  return `<latex>${escapedContent}</latex>`
+}
+
+function readDollarMathBlock(lines, startIndex) {
+  const line = lines[startIndex]
+  const inlineMatch = line.match(/^\s*\$\$([\s\S]*?)\$\$\s*$/)
+  if (inlineMatch && inlineMatch[1].trim()) {
+    return {
+      content: inlineMatch[1],
+      endIndex: startIndex
+    }
+  }
+
+  if (!/^\s*\$\$\s*$/.test(line)) {
+    return null
+  }
+
+  const blockLines = []
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    if (/^\s*\$\$\s*$/.test(lines[index])) {
+      return {
+        content: blockLines.join("\n"),
+        endIndex: index
+      }
+    }
+    blockLines.push(lines[index])
+  }
+  return null
+}
+
 export function transformMarkdown({source, sourcePath, routeMap, nodeMap}) {
   const parsed = parseMarkdownDocument(sourcePath, source)
   const lines = parsed.body.split("\n")
@@ -512,7 +601,7 @@ export function transformMarkdown({source, sourcePath, routeMap, nodeMap}) {
           mermaidFiles.push({content: normalizedContent, relativePath})
           output.push(`<whiteboard type="mermaid" path="@./${relativePath}"></whiteboard>`)
         } else {
-          output.push(`<latex>${escapeXml(blockContent)}</latex>`)
+          output.push(renderLatex(blockContent))
         }
         continue
       }
@@ -526,6 +615,13 @@ export function transformMarkdown({source, sourcePath, routeMap, nodeMap}) {
         }
         index += 1
       }
+      continue
+    }
+
+    const dollarMathBlock = readDollarMathBlock(lines, index)
+    if (dollarMathBlock) {
+      output.push(renderLatex(dollarMathBlock.content))
+      index = dollarMathBlock.endIndex
       continue
     }
 

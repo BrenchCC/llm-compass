@@ -28,7 +28,9 @@ title: 多轮 Agentic RL 的训练稳定性
 
 StarPO（State-Thinking-Actions-Reward Policy Optimization）把整条多轮交互当作一条轨迹 $\tau$ 优化，目标是
 
-$$J_{\text{StarPO}}(\theta) = \mathbb{E}_{\mathcal{M},\, \tau \sim \pi_\theta}\big[R(\tau)\big]$$
+```math
+J_{\text{StarPO}}(\theta) = \mathbb{E}_{\mathcal{M},\, \tau \sim \pi_\theta}\big[R(\tau)\big]
+```
 
 其中 $\mathcal{M}$ 是环境/任务，$R(\tau)$ 是整条轨迹的累计 reward。Echo Trap 的演化大致是：
 
@@ -48,7 +50,7 @@ flowchart TD
 
 针对上述链条，StarPO-S（stabilized）给出三组手段：
 
-1. **基于不确定性的轨迹过滤**。按初始状态计算 reward 不确定性 $U(\pi_\theta,\mathcal{M},s_0)=\operatorname{Std}_{\tau\sim\pi_\theta(\cdot\mid s_0)}\big[R(\tau)\big]$，只保留 $U$ 最高的 top-$p\%$（论文取 $p\approx25\sim50$）样本做梯度更新。直觉：方差已塌缩（确定会成/会败）的样本提供不了学习信号，把算力集中到仍有不确定性的难例上，反而延缓收敛过快导致的崩塌。
+1. **基于不确定性的轨迹过滤**。按初始状态计算 reward 不确定性 $U(\pi_\theta,\mathcal{M},s_0)=\mathrm{Std}_{\tau\sim\pi_\theta(\cdot\mid s_0)}\big[R(\tau)\big]$，只保留 $U$ 最高的 top-$p\%$（论文取 $p\approx25\sim50$）样本做梯度更新。直觉：方差已塌缩（确定会成/会败）的样本提供不了学习信号，把算力集中到仍有不确定性的难例上，反而延缓收敛过快导致的崩塌。
 2. **去 KL + 非对称裁剪（gradient shaping）**。去掉对参考策略的 KL 惩罚项（改用熵奖励维持探索），并采用 clip-higher 式非对称裁剪（如 clip-low $=0.2$、clip-high $=0.28$），给"抬升低概率探索 token"更大的上行步长，缓解熵塌缩——这与 [DAPO](/rlhf/dapo) 的 decouple-clip 思路同源。
 3. **方差缩减 / critic 引入**。在高方差结构下，相比纯 critic-free，引入价值基线（$A_{i,t}=R(\tau_i)-V_\phi(s_{i,t})$）可进一步稳住更新。
 

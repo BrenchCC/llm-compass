@@ -41,9 +41,9 @@ flowchart LR
 - 若 $q(x)\le p(x)$：直接接受；
 - 否则以概率 $1-\dfrac{p(x)}{q(x)}$ 拒绝，并从残差分布重采样：
 
-$$
-p'(x)=\operatorname{norm}\big(\max(0,\ p(x)-q(x))\big)
-$$
+```math
+p'(x)=\mathrm{norm}\big(\max(0,\ p(x)-q(x))\big)
+```
 
 直觉：$q$ 高估的 token 按 $p/q$ 比例打折通过，被打掉的概率质量恰好等于残差分布补回的部分。Leviathan 论文附录 A.1 证明如此得到的样本**严格服从 $p(x)$**——对任意草稿模型成立，$q$ 的好坏只影响速度、不影响正确性。贪心解码（温度 0）时规则退化为逐位精确匹配。
 
@@ -51,15 +51,15 @@ $$
 
 定义单个草稿 token 的接受率 $\beta=\mathbb{E}_{x\sim q}\min\!\big(1,\tfrac{p(x)}{q(x)}\big)=\sum_x\min(p(x),q(x))$，即 $1$ 减去 $p,q$ 间的总变差型散度。在 i.i.d. 假设下记 $\alpha=\mathbb{E}[\beta]$，每轮目标模型前向产出的 token 数是上限 $\gamma+1$ 的截断几何变量，期望为
 
-$$
+```math
 \mathbb{E}(\#\text{tokens})=\frac{1-\alpha^{\gamma+1}}{1-\alpha}
-$$
+```
 
 设 $c$ 为草稿与目标模型单步耗时之比，端到端加速因子为
 
-$$
+```math
 \text{speedup}=\frac{1-\alpha^{\gamma+1}}{(1-\alpha)(\gamma c+1)}
-$$
+```
 
 两点结论：分子随 $\gamma$ 边际递减、分母线性增长，所以 $\gamma$ 存在最优值，$\alpha$ 不够高时盲目加大 $\gamma$ 反而变慢；$c$ 是草稿模型选型的硬约束——草稿太大，即使接受率高也不划算。
 

@@ -23,9 +23,9 @@ PPO 的全套机制——critic + GAE、比值裁剪、多 epoch 复用——是
 
 对每个 prompt $x$ 从 $\pi_\theta$ 采样 $k$ 个回答 $y_1,\dots,y_k$，梯度估计为：
 
-$$
+```math
 \nabla_\theta \mathcal{J} = \mathbb{E}\left[\frac{1}{k} \sum_{i=1}^{k} \Big( R(x, y_i) - \underbrace{\frac{1}{k-1}\sum_{j \neq i} R(x, y_j)}_{\text{留一基线 } b_i} \Big)\, \nabla_\theta \log \pi_\theta(y_i \mid x)\right]
-$$
+```
 
 性质：
 
@@ -38,9 +38,9 @@ KL 约束的处理与 PPO-RLHF 相同：把 $-\beta\log\frac{\pi_\theta(y|x)}{\p
 
 **与 GRPO 的精确关系**。一个常被忽视的恒等式：
 
-$$
+```math
 r_i - \frac{1}{k}\sum_{j=1}^{k} r_j \;=\; \frac{k-1}{k}\Big( r_i - \frac{1}{k-1}\sum_{j\neq i} r_j \Big)
-$$
+```
 
 即"组均值（含自身）做基线"与留一基线只差一个常数缩放 $\frac{k-1}{k}$，可被学习率吸收。所以 **GRPO 与 RLOO 的实质差异不在均值怎么算**，而在于：GRPO 还要除以组内 std（引入偏差和难度加权——奖励方差小的过易/过难 prompt 的优势被放大），并套 PPO 式 clip 做多步 off-policy 更新；RLOO 保持无偏估计 + 单步 on-policy，是两者中理论上更"干净"的那个。
 

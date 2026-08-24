@@ -16,15 +16,15 @@ title: Transformer 基础架构
 
 自注意力的核心是：对序列中每个 token，用它的 **Query** 去和所有 token 的 **Key** 做相似度匹配，再据此对所有 token 的 **Value** 加权求和。设输入为 $X \in \mathbb{R}^{n \times d}$，通过三组投影矩阵得到：
 
-$$
+```math
 Q = XW_Q,\quad K = XW_K,\quad V = XW_V
-$$
+```
 
 随后用**缩放点积注意力（Scaled Dot-Product Attention）**计算输出：
 
-$$
+```math
 \text{Attention}(Q,K,V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V
-$$
+```
 
 其中 $d_k$ 是 Key 的维度。除以 $\sqrt{d_k}$ 这一步是关键：当 $d_k$ 较大时，$QK^\top$ 的内积量级会随维度线性增长，未缩放会把 softmax 推入梯度极小的饱和区；除以 $\sqrt{d_k}$ 把方差拉回 $O(1)$，稳住训练。
 
@@ -34,9 +34,9 @@ $$
 
 单一注意力只能学到一种"关注模式"。多头注意力（Multi-Head Attention, MHA）把 $d$ 维空间切成 $h$ 个子空间，各自独立做注意力，再拼接并经一层线性投影：
 
-$$
+```math
 \text{MHA}(X) = \text{Concat}(\text{head}_1,\dots,\text{head}_h)W_O,\quad \text{head}_i = \text{Attention}(XW_Q^i, XW_K^i, XW_V^i)
-$$
+```
 
 每个头通常取 $d_k = d/h$，使总计算量与单头大致相当，却能在不同子空间并行捕捉语法、指代、位置等不同关系。
 
@@ -46,17 +46,17 @@ $$
 
 注意力负责 token 间的信息混合，**逐位置前馈网络（Position-wise FFN）**则负责对每个 token 单独做非线性变换、扩充表达容量。原始 FFN 是两层线性夹一个 ReLU：
 
-$$
+```math
 \text{FFN}(x) = \max(0,\, xW_1 + b_1)\,W_2 + b_2
-$$
+```
 
 中间维度 $d_{ff}$ 通常取隐藏维度的 4 倍。FFN 的参数往往占整个模型参数量的大头。
 
 Shazeer 在 2020 年的 *GLU Variants Improve Transformer*（arXiv:2002.05202）中，用**门控线性单元（GLU）**族替换 FFN 的激活。GLU 的基本形式是两路线性投影做逐元素相乘，其中一路过激活函数充当"门"。其中 **SwiGLU** 用 Swish/SiLU 作为门控激活：
 
-$$
+```math
 \text{SwiGLU}(x) = \big(\text{Swish}_\beta(xW_1)\big) \otimes (xW_3)\;,\qquad \text{Swish}_\beta(z) = z\cdot\sigma(\beta z)
-$$
+```
 
 随后再过一层 $W_2$ 输出。论文实验中 GEGLU 与 SwiGLU 给出了最优的困惑度（以原文为准）。由于 GLU 多了一路投影矩阵（$W_1, W_2, W_3$ 三个而非两个），实践中常把中间维度按 $\tfrac{2}{3}$ 缩放，使总参数量与原始两层 FFN 持平。SwiGLU 已成为 Llama、PaLM、Qwen、DeepSeek 等主流模型的默认 FFN。
 
@@ -80,11 +80,11 @@ $$
 
 ## Causal Mask 与 decoder-only 范式
 
-语言模型做的是自回归预测：第 $t$ 个位置只能看到 $\le t$ 的 token。实现方式是在注意力分数上加一个**因果掩码（causal mask）**——把 $j > i$ 的位置（未来 token）置为 $-\infty$，softmax 后权重归零：
+语言模型做的是自回归预测：第 $t$ 个位置只能看到 $\le t$ 的 token。实现方式是在注意力分数上加一个**因果掩码（causal mask）**——把 $j \gt  i$ 的位置（未来 token）置为 $-\infty$，softmax 后权重归零：
 
-$$
-\text{score}_{ij} = \frac{Q_i K_j^\top}{\sqrt{d_k}} + M_{ij},\quad M_{ij} = \begin{cases} 0 & j \le i \\ -\infty & j > i \end{cases}
-$$
+```math
+\text{score}_{ij} = \frac{Q_i K_j^\top}{\sqrt{d_k}} + M_{ij},\quad M_{ij} = \begin{cases} 0 & j \le i \\ -\infty & j \gt  i \end{cases}
+```
 
 这个三角掩码是 decoder-only 模型一切自回归生成的基础，也使得训练时一条序列的所有位置可以并行计算 loss（teacher forcing），推理时配合 [KV Cache](/inference/kv-cache) 逐 token 生成。
 

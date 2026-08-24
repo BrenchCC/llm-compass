@@ -15,7 +15,9 @@ MetaGPT 解决的核心痛点是：把多个 LLM **朴素地串成对话**（cha
 
 设计理念可以浓缩成框架自己的口号：
 
-$$\text{Code} = \text{SOP}(\text{Team})$$
+```math
+\text{Code} = \text{SOP}(\text{Team})
+```
 
 也就是说，软件不是某个全能 agent"凭空想出来"的，而是一支被 SOP 规约的团队按流水线产出的结果。MetaGPT 模拟一家软件公司：产品经理写 PRD、架构师设计系统与 API、项目经理拆任务、工程师写代码、QA 审查。每个角色：
 

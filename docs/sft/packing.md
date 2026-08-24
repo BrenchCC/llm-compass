@@ -15,9 +15,9 @@ SFT 数据的长度分布通常长尾且方差大：有的样本几十个 token�
 
 衡量浪费的指标是**有效 token 占比**：
 
-$$
+```math
 \eta = \frac{\sum_i L_i}{B \cdot L_{\max}}
-$$
+```
 
 其中 $L_i$ 是第 $i$ 条样本的真实长度，$B$ 是 batch size，$L_{\max}$ 是对齐长度。当长度分布很散时，$\eta$ 可能低到 50% 甚至更差——意味着接近一半的前向/反向算力花在 pad 上。
 
@@ -38,9 +38,9 @@ Packing 的思路是：把多条短样本**首尾相接**拼成一条接近 $L_{
 
 解决办法是 **block-diagonal attention mask**：只允许同一原始样本内部的 token 互相注意，跨样本一律屏蔽。设拼接序列被切成若干段 $s_1, \dots, s_k$，注意力可见性为：
 
-$$
+```math
 \text{mask}(i, j) = \begin{cases} 1 & \text{seg}(i) = \text{seg}(j) \ \text{且}\ j \le i \\ 0 & \text{otherwise} \end{cases}
-$$
+```
 
 同时 **position_ids 要在每段开头重置为 0**，否则后段样本会拿到偏大的位置编码（尤其 RoPE 会因此偏移），等价于把它当成"一条超长序列的后半段"，与训练分布不符。
 
@@ -48,9 +48,9 @@ $$
 
 显式构造 $L \times L$ 的 block-diagonal mask 内存开销是平方级，不可取。工程上用 FlashAttention 的 **变长（varlen）接口**：传入累积序列长度 `cu_seqlens`（cumulative sequence lengths），kernel 内部就只在每段内部做 attention，既隔离了样本又零额外内存、且保持 FlashAttention 的速度。这是当前隔离 Packing 的主流实现路径。
 
-$$
+```math
 \texttt{cu\_seqlens} = [0,\ L_1,\ L_1{+}L_2,\ \dots,\ \textstyle\sum_i L_i]
-$$
+```
 
 ## 与 baseline 对比
 

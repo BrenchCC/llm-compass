@@ -21,9 +21,9 @@ title: Reward Model（奖励模型）
 
 **Bradley-Terry 损失**：给定偏好对 $(x, y_w, y_l)$，其中 $y_w$ 是人类更偏好的回答（chosen），$y_l$ 是较差的（rejected），BT 模型假设"$y_w$ 胜过 $y_l$"的概率为 $\sigma(r_\phi(x,y_w)-r_\phi(x,y_l))$，于是最小化负对数似然：
 
-$$
+```math
 \mathcal{L}_{\text{RM}}(\phi) = -\,\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \big[ \log \sigma \big( r_\phi(x, y_w) - r_\phi(x, y_l) \big) \big]
-$$
+```
 
 其中 $\sigma$ 是 sigmoid。注意损失只依赖**分数差**，所以 RM 的绝对数值没有语义——它只在同一 prompt 内可比，这也是后续算法都对 reward 做归一化的原因。
 

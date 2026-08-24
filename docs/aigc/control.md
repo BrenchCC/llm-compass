@@ -20,7 +20,9 @@ ControlNet 解决的是"按一张结构图生成"的问题——输入 Canny 边
 
 它的做法是**复制基座 U-Net 编码器的可训练分支**：冻结原始 Stable Diffusion 的全部权重，把编码器各 block 复制一份做成可训练副本，条件图经这个副本编码后，通过**零卷积**（zero convolution，零初始化的 $1\times1$ 卷积）注入回原网络。零卷积是关键设计：训练初始时它输出为 0，意味着初始状态下注入分支对基座**毫无扰动**，等价于原模型，训练再让它从零逐渐"长出"控制能力，从而避免微调初期的噪声破坏预训练知识。
 
-$$y_c = \mathcal{F}(x;\Theta) + \mathcal{Z}\big(\mathcal{F}(x + \mathcal{Z}(c;\Theta_{z1});\Theta_c);\Theta_{z2}\big)$$
+```math
+y_c = \mathcal{F}(x;\Theta) + \mathcal{Z}\big(\mathcal{F}(x + \mathcal{Z}(c;\Theta_{z1});\Theta_c);\Theta_{z2}\big)
+```
 
 其中 $\mathcal{F}(\cdot;\Theta)$ 是冻结的原 block，$\Theta_c$ 是可训练副本，$\mathcal{Z}$ 是零卷积。论文指出训练对数据规模相当鲁棒，小数据集（<50k）和大数据集（>1M）都能学好。代价是参数量较大（约等于复制了半个 U-Net），训练与推理都比纯 T2I 重一些。
 
@@ -48,7 +50,9 @@ T2I-Adapter（同期工作）目标相同，但走"更轻"的路线：训练一�
 
 Textual Inversion 用 3~5 张图，**只优化一个新"词"的嵌入向量** $v_*$，冻结整个 T2I 模型。它在文本嵌入空间里找一个伪词 $S_*$，使得 prompt 里写 "a photo of $S_*$" 时模型能复现该概念：
 
-$$v_* = \arg\min_{v}\; \mathbb{E}_{z,\,\epsilon,\,t}\Big[\,\big\|\epsilon - \epsilon_\theta(z_t, t, c_\theta(y, v))\big\|_2^2\,\Big]$$
+```math
+v_* = \arg\min_{v}\; \mathbb{E}_{z,\,\epsilon,\,t}\Big[\,\big\|\epsilon - \epsilon_\theta(z_t, t, c_\theta(y, v))\big\|_2^2\,\Big]
+```
 
 产物只有一个（或几个）向量，体积几 KB，极轻；但因为基座一字未改，对复杂主体的还原保真度有限，更适合捕捉"风格/概念"而非精确身份。
 
@@ -56,7 +60,9 @@ $$v_* = \arg\min_{v}\; \mathbb{E}_{z,\,\epsilon,\,t}\Big[\,\big\|\epsilon - \eps
 
 DreamBooth 反过来——用少量（典型 3~5 张）图**微调整个 T2I 模型权重**，把一个稀有标识符 token（如 `[V]`）与该主体绑定。为防止微调把整个类别都带偏、丢失泛化（语言漂移 / 过拟合），它引入**类别先验保留损失**（prior preservation loss），用模型自己生成的同类图做正则：
 
-$$\mathcal{L} = \mathbb{E}\big[\|\hat{x}_\theta - x\|^2\big] + \lambda\,\mathbb{E}\big[\|\hat{x}_\theta(\text{class prior}) - x_{pr}\|^2\big]$$
+```math
+\mathcal{L} = \mathbb{E}\big[\|\hat{x}_\theta - x\|^2\big] + \lambda\,\mathbb{E}\big[\|\hat{x}_\theta(\text{class prior}) - x_{pr}\|^2\big]
+```
 
 它的身份保真度通常优于 Textual Inversion，但要改全部权重，产物是一份完整模型（数 GB），训练成本与存储都更高。
 
@@ -64,7 +70,9 @@ $$\mathcal{L} = \mathbb{E}\big[\|\hat{x}_\theta - x\|^2\big] + \lambda\,\mathbb{
 
 实践中最常用的定制方式是 [LoRA](/lora/lora)（Low-Rank Adaptation，原始论文 arXiv:2106.09685）。它给 U-Net（常含交叉注意力的 $W_q,W_k,W_v$ 等）的权重加一个低秩增量 $\Delta W = BA$，冻结原权重只训 $A,B$：
 
-$$W' = W + \Delta W = W + BA,\quad B\in\mathbb{R}^{d\times r},\ A\in\mathbb{R}^{r\times k},\ r\ll \min(d,k)$$
+```math
+W' = W + \Delta W = W + BA,\quad B\in\mathbb{R}^{d\times r},\ A\in\mathbb{R}^{r\times k},\ r\ll \min(d,k)
+```
 
 LoRA 本是大语言模型的高效微调技术，迁到扩散模型后成为社区定制（人物、画风、IP）的事实标准：产物通常仅几 MB ~ 百 MB，训练快，可热插拔、可叠加多个、可调权重。它常与 DreamBooth 式数据流程结合（即 "DreamBooth + LoRA"），在保真与成本间取得很好的折中。
 
@@ -76,7 +84,9 @@ LoRA 本是大语言模型的高效微调技术，迁到扩散模型后成为社
 
 核心是**解耦交叉注意力**（decoupled cross-attention）：参考图先过冻结的图像编码器（CLIP）得到图像特征，然后在 U-Net **每个交叉注意力层旁新增一条只处理图像特征的交叉注意力**，与原有文本交叉注意力并行，结果相加。训练时只更新这些新增的交叉注意力参数。论文里一个仅约 **22M 参数**的 IP-Adapter 即可媲美全量微调的图像提示模型，且天然与文本 prompt 共存、可与 ControlNet 等结构控制叠加使用。
 
-$$\mathbf{Z}^{new} = \underbrace{\text{Attn}(Q, K_t, V_t)}_{\text{文本}} + \lambda\,\underbrace{\text{Attn}(Q, K_i, V_i)}_{\text{图像（新增）}}$$
+```math
+\mathbf{Z}^{new} = \underbrace{\text{Attn}(Q, K_t, V_t)}_{\text{文本}} + \lambda\,\underbrace{\text{Attn}(Q, K_i, V_i)}_{\text{图像（新增）}}
+```
 
 ## 横向对比
 

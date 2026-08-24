@@ -56,7 +56,9 @@ flowchart LR
 
 **BLIP-2 的 Q-Former**（2301.12597）用一组**可学习 query 向量（论文中 32 个）**，通过 cross-attention 从冻结视觉编码器抽取特征，把任意分辨率图像压成**固定长度（32）**的视觉 token，充当信息瓶颈。
 
-$$\text{Q-Former}:\;\; Q\in\mathbb{R}^{32\times d}\;\xrightarrow{\text{cross-attn}(Q,\,V_{\text{img}})}\;Z\in\mathbb{R}^{32\times d}$$
+```math
+\text{Q-Former}:\;\; Q\in\mathbb{R}^{32\times d}\;\xrightarrow{\text{cross-attn}(Q,\,V_{\text{img}})}\;Z\in\mathbb{R}^{32\times d}
+```
 
 优点是视觉 token 数固定且很少，LLM 侧开销小；缺点是固定瓶颈对密集 OCR / 高分辨率细节有损，且 Q-Former 本身需要专门预训练。
 

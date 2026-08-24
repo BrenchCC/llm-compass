@@ -11,7 +11,7 @@ title: GSPO
 
 ## 直觉与动机
 
-GSPO 的出发点是一个理论洁癖式的观察：**重要性采样权重要起到分布校正作用，前提是在同一分布上对多个样本求平均**。[GRPO](/rlhf/grpo) 在每个 token 位置 $t$ 上使用比值 $\rho_{i,t} = \pi_\theta(y_{i,t}|x,y_{i,<t})\,/\,\pi_{\theta_{\text{old}}}(y_{i,t}|x,y_{i,<t})$，但每个位置只有一个样本——这个权重根本起不到校正 $\pi_{\theta_{\text{old}}}$ 与 $\pi_\theta$ 之间分布差异的作用，它只是往梯度里注入高方差噪声。更糟的是：
+GSPO 的出发点是一个理论洁癖式的观察：**重要性采样权重要起到分布校正作用，前提是在同一分布上对多个样本求平均**。[GRPO](/rlhf/grpo) 在每个 token 位置 $t$ 上使用比值 $\rho_{i,t} = \pi_\theta(y_{i,t}|x,y_{i,\lt t})\,/\,\pi_{\theta_{\text{old}}}(y_{i,t}|x,y_{i,\lt t})$，但每个位置只有一个样本——这个权重根本起不到校正 $\pi_{\theta_{\text{old}}}$ 与 $\pi_\theta$ 之间分布差异的作用，它只是往梯度里注入高方差噪声。更糟的是：
 
 1. **噪声随长度累积**。序列越长，逐 token 的乘性噪声越积越多；裁剪机制不仅消除不了这种噪声，反而因为有偏截断进一步加剧问题。长 CoT 训练中模型可能出现**不可逆崩溃**——一旦坏更新破坏了策略结构，靠后续训练拉不回来。
 2. **粒度错配**。奖励是序列级的（整道题对/错、整条回答的 RM 分），优势也是序列级的，优化和裁剪的单元却是 token 级——"奖励的单位"与"优化的单位"不一致。GSPO 的主张就是把二者对齐。
@@ -23,15 +23,15 @@ GSPO 的出发点是一个理论洁癖式的观察：**重要性采样权重要�
 
 定义**序列级重要性比值**（对整条序列似然比做 $1/|y_i|$ 次方的长度归一化，即逐 token 对数比的算术平均再取指数）：
 
-$$
-s_i(\theta) = \left(\frac{\pi_\theta(y_i\mid x)}{\pi_{\theta_{\text{old}}}(y_i\mid x)}\right)^{1/|y_i|} = \exp\!\left( \frac{1}{|y_i|}\sum_{t=1}^{|y_i|} \log \frac{\pi_\theta(y_{i,t}\mid x, y_{i,<t})}{\pi_{\theta_{\text{old}}}(y_{i,t}\mid x, y_{i,<t})} \right)
-$$
+```math
+s_i(\theta) = \left(\frac{\pi_\theta(y_i\mid x)}{\pi_{\theta_{\text{old}}}(y_i\mid x)}\right)^{1/|y_i|} = \exp\!\left( \frac{1}{|y_i|}\sum_{t=1}^{|y_i|} \log \frac{\pi_\theta(y_{i,t}\mid x, y_{i,\lt t})}{\pi_{\theta_{\text{old}}}(y_{i,t}\mid x, y_{i,\lt t})} \right)
+```
 
 长度归一化有两个作用：消除长短序列间比值量级的系统差异（否则同一裁剪范围对不同长度的序列含义完全不同），并把少数 token 的似然剧变压平。优势沿用组内标准化 $\hat{A}_i = \frac{r_i - \mathrm{mean}(\{r_j\}_{j=1}^G)}{\mathrm{std}(\{r_j\}_{j=1}^G)}$，目标函数是组内**序列级**裁剪代理目标：
 
-$$
+```math
 \mathcal{J}_{\text{GSPO}}(\theta) = \mathbb{E}_{x\sim\mathcal{D},\ \{y_i\}_{i=1}^{G}\sim\pi_{\theta_{\text{old}}}}\left[ \frac{1}{G}\sum_{i=1}^{G} \min\Big( s_i(\theta)\,\hat{A}_i,\ \mathrm{clip}\big(s_i(\theta),\ 1-\epsilon,\ 1+\epsilon\big)\,\hat{A}_i \Big) \right]
-$$
+```
 
 裁剪、奖励、优化全部发生在序列级。从梯度看：GSPO 对一条序列内的所有 token 施加**相同**的权重 $s_i(\theta)\hat{A}_i$，相当于"组内序列级 REINFORCE + 裁剪"；GRPO 则给每个 token 不同的噪声权重 $\rho_{i,t}\hat{A}_i$——这正是二者稳定性差异的来源。
 

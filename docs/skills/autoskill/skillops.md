@@ -26,7 +26,9 @@ title: SkillOps：把技能库当作可自维护的软件生态
 
 **typed Skill Contract（带类型的技能契约）**。SkillOps 把每个技能 $s \in \mathcal{S}$ 写成一个五元组：
 
-$$s = (P, O, A, V, F)$$
+```math
+s = (P, O, A, V, F)
+```
 
 - **P（Preconditions）**：调用前必须满足的前置条件；
 - **O（Operation）**：可执行的操作过程本身；
@@ -71,11 +73,15 @@ SkillOps 给每个技能打几个 $[0,1]$ 区间的可观测分数，再聚合�
 
 全库健康度大致是各维度的加权平均（论文用均匀权重）：
 
-$$H(\mathcal{L}) = \frac{1}{|\mathcal{S}|}\sum_{s}\big(w_U\,U(s) + w_R\,(1-R(s)) + \dots\big)$$
+```math
+H(\mathcal{L}) = \frac{1}{|\mathcal{S}|}\sum_{s}\big(w_U\,U(s) + w_R\,(1-R(s)) + \dots\big)
+```
 
 诊断之上还有一层 **ContractGraph-Propagated Diagnosis（CGPD）**：风险不只看本地，还沿依赖边传播——
 
-$$R^{(t+1)}(s) = (1-\alpha)\,R_{\text{loc}}(s) + \alpha\cdot \max_{s'} R^{(t)}(s')$$
+```math
+R^{(t+1)}(s) = (1-\alpha)\,R_{\text{loc}}(s) + \alpha\cdot \max_{s'} R^{(t)}(s')
+```
 
 这样一来，**上游技能高风险会"传染"下游**，系统得以在故障真正发生前，就抢先给受影响的技能插入验证器。诊断完成后，库时（library-time）维护循环执行一组带类型的修复动作：`merge`（合并冗余对）、`repair`（用执行反馈重写 $O_s$）、`retire`（退役长期失败/过时技能）、`add_validator`（补 $V$）、`add_adapter`（给不兼容接口插类型转换 shim）、`instantiate`（给参数化技能绑定具体参数）。
 

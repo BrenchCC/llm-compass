@@ -23,9 +23,9 @@ agent 与一次性生成的本质区别在于**环境反馈**：Anthropic 把 ag
 
 OpenHands 的 event stream 架构把状态定义为按时间排序的全部事件（动作与观察，含用户交互），agent 抽象为一个 `step(state) → action` 函数。记第 $t$ 步状态为事件流 $s_t$，策略（LLM）为 $\pi_\theta$，执行环境为 $\mathcal{E}$，上下文构建函数为 $\mathcal{C}$：
 
-$$
+```math
 a_t \sim \pi_\theta\big(\cdot \mid \mathcal{C}(s_t)\big), \qquad o_t = \mathcal{E}(a_t), \qquad s_{t+1} = s_t \oplus (a_t, o_t)
-$$
+```
 
 循环在模型不再发起工具调用（任务完成或转回用户）、达到最大迭代数或预算上限时终止。**harness 的全部上下文管理都浓缩在 $\mathcal{C}$ 里**：朴素实现 $\mathcal{C}(s_t) = s_t$（全历史原样拼接）既贵又差——见 §5 的消融数字。
 
@@ -54,9 +54,9 @@ flowchart TD
 
 **(2) LLM 总结（compaction / condensation）**。OpenHands 的 LLMSummarizingCondenser：事件数超过 `max_size` 阈值时触发，`keep_first` 保留最初若干事件（system prompt 与初始用户消息），最近消息保留原文，中间较旧事件交给 LLM 总结（重点编码用户目标、已完成进展、剩余工作、关键文件与失败测试）：
 
-$$
+```math
 \mathcal{C}(s_t) = \underbrace{(e_1, \dots, e_k)}_{\text{keep\_first}} \;\oplus\; \underbrace{\mathrm{summ}(e_{k+1}, \dots, e_m)}_{\text{LLM 总结}} \;\oplus\; \underbrace{(e_{m+1}, \dots, e_n)}_{\text{最近原文}}
-$$
+```
 
 Claude Code 的 auto-compact 顺序是「先清旧工具输出，必要时再总结对话」，总结时保留架构决策、未解决 bug、实现细节，丢弃冗余工具输出；用户可用 `/compact <instructions>` 定向控制保留内容。
 

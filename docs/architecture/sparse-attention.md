@@ -73,9 +73,9 @@ flowchart TD
 
 标准注意力是 $\text{softmax}(QK^\top)V$，必须先得到 $QK^\top$（$n\times n$）。线性注意力用一个特征映射 $\phi(\cdot)$ 去掉 softmax，把计算重排为：
 
-$$
+```math
 \text{Attn}(Q,K,V) \approx \phi(Q)\big(\phi(K)^\top V\big)
-$$
+```
 
 先算 $\phi(K)^\top V$（$d\times d$，与 $n$ 无关）再左乘 $\phi(Q)$，复杂度从 $O(n^2 d)$ 降到 $O(n d^2)$，对长序列即线性。其本质等价于维护一个**定长的状态矩阵**，逐 token 递推更新——这意味着解码时 KV Cache 可被替换成固定大小的状态，显存不再随长度增长。
 

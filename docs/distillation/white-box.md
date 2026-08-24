@@ -40,35 +40,35 @@ flowchart TD
 
 ## 方法与公式
 
-**经典 KD（Hinton 2015）**：教师与学生的 logits 同除温度 $\tau$ 后取 softmax，匹配软分布（梯度乘 $\tau^2$ 保持量级），再与真实标签的交叉熵加权混合。$\tau > 1$ 放大非最大类的概率，暴露更多类间结构。
+**经典 KD（Hinton 2015）**：教师与学生的 logits 同除温度 $\tau$ 后取 softmax，匹配软分布（梯度乘 $\tau^2$ 保持量级），再与真实标签的交叉熵加权混合。$\tau \gt  1$ 放大非最大类的概率，暴露更多类间结构。
 
 **token 级 forward KL（LLM 标准形式）**：在序列每个位置匹配下一 token 分布，
 
-$$
-\mathcal{L}_{\text{FKL}}(\theta) = \mathbb{E}_{(x,y) \sim \mathbb{D}} \left[ \sum_{t=1}^{|y|} \mathrm{KL}\!\left( \pi_{\text{T}}(\cdot \mid x, y_{<t}) \,\big\|\, \pi_\theta(\cdot \mid x, y_{<t}) \right) \right]
-$$
+```math
+\mathcal{L}_{\text{FKL}}(\theta) = \mathbb{E}_{(x,y) \sim \mathbb{D}} \left[ \sum_{t=1}^{|y|} \mathrm{KL}\!\left( \pi_{\text{T}}(\cdot \mid x, y_{\lt t}) \,\big\|\, \pi_\theta(\cdot \mid x, y_{\lt t}) \right) \right]
+```
 
 **MiniLLM（reverse KL）**：把目标换为
 
-$$
+```math
 \theta^\star = \arg\min_\theta \ \mathrm{KL}(\pi_\theta \,\|\, \pi_{\text{T}}) = \arg\min_\theta \ \mathbb{E}_{x \sim \mathbb{D},\, y \sim \pi_\theta(\cdot \mid x)} \left[ \log \frac{\pi_\theta(y \mid x)}{\pi_{\text{T}}(y \mid x)} \right]
-$$
+```
 
 期望取在学生自身分布上，无法直接反传，需用策略梯度优化（论文配套了单步分解、teacher-mixed 采样、长度正则等稳定化技巧），训练形态接近一个以 $\log \pi_{\text{T}}$ 为奖励信号的 RL（可对照 [PPO](/rlhf/ppo) 的基建）。
 
 **GKD（on-policy + 广义 JSD）**：序列来源与散度两个轴解耦。序列以概率混合自固定数据集与学生采样 $y \sim \pi_\theta$；散度可选广义 JSD（记教师分布 $p$、学生分布 $q_\theta$，插值系数用 $\lambda$ 以免与本站 KL 系数 $\beta$ 混淆）：
 
-$$
+```math
 \mathrm{JSD}_{\lambda}(p \,\|\, q_\theta) = \lambda\, \mathrm{KL}(p \,\|\, m) + (1-\lambda)\, \mathrm{KL}(q_\theta \,\|\, m), \qquad m = \lambda p + (1-\lambda)\, q_\theta
-$$
+```
 
 $\lambda \to 0$ 时（按比例）趋近 forward KL，$\lambda \to 1$ 时趋近 reverse KL，可在 mode-covering 与 mode-seeking 之间连续调节。关键工程性质：即使序列来自学生采样，loss 仍是逐位置散度、对 $\theta$ 直接可微（把采样视为数据生成、不对采样过程求导），不需要策略梯度。GKD 还能与 RLHF 目标线性组合，蒸馏与对齐一锅出。
 
 **DistiLLM（skew KL + 自适应 off-policy）**：$\alpha$-skew forward KL 把学生分布与教师分布先插值再算散度：
 
-$$
+```math
 \mathrm{SKL}^{(\alpha)}(p \,\|\, q_\theta) = \mathrm{KL}\!\left( p \,\,\big\|\,\, \alpha\, p + (1-\alpha)\, q_\theta \right)
-$$
+```
 
 （对称地有 skew reverse KL。）插值保证了散度有界、梯度行为更稳，论文给出相应理论性质；配合按验证 loss 自适应决定是否启用学生样本（off-policy 复用 replay 池，而非每步重新采样），显著降低 on-policy 的训练开销。
 

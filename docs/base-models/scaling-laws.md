@@ -16,9 +16,9 @@ title: Scaling Laws（规模定律）
 
 幂律（power law）意味着：损失 $L$ 与某个规模量 $X$ 在对数坐标下呈直线，即 $\log L = -\alpha \log X + \text{const}$，等价于
 
-$$
+```math
 L(X) \propto X^{-\alpha}.
-$$
+```
 
 幂律的两个工程含义：(1) 收益是**持续但递减**的——每翻一倍规模带来固定的损失下降量，没有断崖、也没有饱和上限（在观测范围内）；(2) 因为在 log-log 图上是直线，所以可以用便宜的小模型外推昂贵的大模型，这才是 scaling law 能当"投资工具"用的根本原因。
 
@@ -28,9 +28,9 @@ Kaplan 等人（OpenAI，《Scaling Laws for Neural Language Models》，arXiv:2
 
 - 当**不受其他因素瓶颈**时，损失分别对 $N$、$D$、$C$ 呈幂律，趋势跨越多个数量级：
 
-$$
+```math
 L(N) \propto N^{-\alpha_N},\qquad L(D) \propto D^{-\alpha_D},\qquad L(C) \propto C^{-\alpha_C}.
-$$
+```
 
   （三个指数 $\alpha$ 的具体数值以原文为准，量级上均为小于 1 的正数，意味着规模翻倍只带来固定的、温和的损失下降。）
 - **架构细节（宽度、深度、注意力头数等）影响很小**——在很宽的范围内，规模总量比形状重要。
@@ -46,9 +46,9 @@ Hoffmann 等人（DeepMind，《Training Compute-Optimal Large Language Models�
 
 换言之，最优配比近似一个常数：每个参数约 **20 个训练 token**（"~20 tokens/参数"，确切系数以原文拟合为准）。用幂律写出来就是
 
-$$
+```math
 N_{\text{opt}} \propto C^{a},\qquad D_{\text{opt}} \propto C^{b},\qquad a \approx b \approx 0.5,
-$$
+```
 
 即两者各分得约一半的"算力弹性"（对比 Kaplan 给出的 $a$ 明显大于 $b$、把预算更多压向参数）。这背后利用了 $C \approx 6 N D$ 的近似关系（每 token 每参数约 6 次浮点运算）。
 

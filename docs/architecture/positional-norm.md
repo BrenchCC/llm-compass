@@ -1,7 +1,6 @@
 ---
 title: 位置编码与归一化
 ---
-
 # 位置编码与归一化
 
 > **一句话**：位置编码决定 Transformer 如何"感知顺序"，归一化决定它能否"稳定地训深"——二者是把注意力机制变成可用大模型的两条工程支柱。
@@ -16,10 +15,10 @@ title: 位置编码与归一化
 
 原始 Transformer 用**正弦绝对位置编码**：对位置 $p$、维度 $i$，
 
-$$
+```math
 \mathrm{PE}(p, 2i) = \sin\!\left(\frac{p}{10000^{2i/d}}\right),\quad
 \mathrm{PE}(p, 2i+1) = \cos\!\left(\frac{p}{10000^{2i/d}}\right),
-$$
+```
 
 然后把 $\mathrm{PE}$ 直接**加到词向量**上。BERT/GPT-2 则改用**可学习的绝对位置嵌入**（learned APE）：每个位置一个可训练向量。
 
@@ -35,22 +34,22 @@ RoPE（Rotary Position Embedding，Su et al., 2021，arXiv:2104.09864）是当�
 
 把 $d$ 维向量两两配对成 $d/2$ 个二维子空间。对位置 $m$ 的查询向量 $\mathbf{q}$，在第 $i$ 个子空间上施加旋转角 $m\theta_i$：
 
-$$
+```math
 \begin{pmatrix} q'_{2i} \\ q'_{2i+1} \end{pmatrix}
 =
 \begin{pmatrix} \cos m\theta_i & -\sin m\theta_i \\ \sin m\theta_i & \cos m\theta_i \end{pmatrix}
 \begin{pmatrix} q_{2i} \\ q_{2i+1} \end{pmatrix},
 \qquad
 \theta_i = 10000^{-2i/d}.
-$$
+```
 
 记旋转矩阵为 $R_m$，则 $\tilde{\mathbf q}_m = R_m \mathbf q$、$\tilde{\mathbf k}_n = R_n \mathbf k$。关键性质来自旋转矩阵的正交性：
 
-$$
+```math
 \langle R_m \mathbf q,\; R_n \mathbf k\rangle
 = \mathbf q^\top R_m^\top R_n \mathbf k
 = \mathbf q^\top R_{n-m}\, \mathbf k,
-$$
+```
 
 即点积**只依赖相对位置 $n-m$**，绝对位置自动消去。RoPE 的优点：
 
@@ -61,12 +60,13 @@ $$
 
 RoPE 在训练长度内表现好，但**直接推到更长上下文会迅速崩溃**（高频维度旋转超出训练见过的角度范围）。常见扩展手段：
 
-| 方法 | 做法 | 直觉 |
-| --- | --- | --- |
-| **位置插值（PI）** | 把位置 $m$ 缩放为 $m/s$（$s$=扩展倍数） | 所有频率"等比压缩"，把长序列塞回训练范围，需少量微调 |
-| **NTK-aware** | 改 base（如 $10000\to 10000\cdot s^{d/(d-2)}$），高频少缩、低频多缩 | 把"插值压力"分摊到各维度，常可免微调用一段 |
-| **Dynamic NTK** | 推理时随序列长度动态调 base | 短序列不损精度，长序列再放大 |
-| **YaRN** | NTK-by-parts 分段插值 + 注意力温度缩放 | 高频维不插值、低频维插值，并配合 attention scaling |
+
+| 方法               | 做法                                                               | 直觉                                                 |
+| -------------------- | -------------------------------------------------------------------- | ------------------------------------------------------ |
+| **位置插值（PI）** | 把位置$m$ 缩放为 $m/s$（$s$=扩展倍数）                             | 所有频率"等比压缩"，把长序列塞回训练范围，需少量微调 |
+| **NTK-aware**      | 改 base（如$10000\to 10000\cdot s^{d/(d-2)}$），高频少缩、低频多缩 | 把"插值压力"分摊到各维度，常可免微调用一段           |
+| **Dynamic NTK**    | 推理时随序列长度动态调 base                                        | 短序列不损精度，长序列再放大                         |
+| **YaRN**           | NTK-by-parts 分段插值 + 注意力温度缩放                             | 高频维不插值、低频维插值，并配合 attention scaling   |
 
 YaRN（Peng et al., 2023，arXiv:2309.00071）综合了"按部分插值（NTK-by-parts）"与注意力温度缩放，是目前长上下文扩展中效果与训练成本较优的代表，已被 Qwen 等模型采用（具体数字以原文为准）。NTK-aware / Dynamic NTK 也已在 Code Llama、Qwen 等开源模型中落地（以各模型技术报告为准）。
 
@@ -74,9 +74,9 @@ YaRN（Peng et al., 2023，arXiv:2309.00071）综合了"按部分插值（NTK-by
 
 ALiBi（Attention with Linear Biases，Press et al., 2021，arXiv:2108.12409）走了另一条路：**完全不加位置嵌入**，而是在注意力 logits 上按相对距离加一个线性惩罚：
 
-$$
+```math
 \text{score}(i, j) = \mathbf q_i^\top \mathbf k_j \;-\; m \cdot (i - j),
-$$
+```
 
 其中斜率 $m$ 是每个注意力头固定的常数（不同头取不同斜率）。距离越远惩罚越大。ALiBi 的卖点是**强外推能力**：在短序列上训练、推理时直接用到更长序列，几乎不掉点。它结构简单、无需位置参数，但在某些任务上的细粒度位置区分能力不如 RoPE，整体生态采用度也不及 RoPE。
 
@@ -99,27 +99,28 @@ graph LR
 
 **LayerNorm**（Ba et al., 2016，arXiv:1607.06450）对单个样本在特征维做标准化：
 
-$$
+```math
 \mathrm{LN}(\mathbf x) = \gamma \odot \frac{\mathbf x - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta,
 \qquad
 \mu = \frac{1}{d}\sum_i x_i,\quad \sigma^2 = \frac{1}{d}\sum_i (x_i - \mu)^2.
-$$
+```
 
 **RMSNorm**（Zhang & Sennrich, 2019，arXiv:1910.07467）猜想 LayerNorm 真正起作用的是**缩放不变性**而非"减均值"的中心化，于是去掉均值与偏置项，只用均方根重标定：
 
-$$
+```math
 \mathrm{RMSNorm}(\mathbf x) = \gamma \odot \frac{\mathbf x}{\sqrt{\frac{1}{d}\sum_i x_i^2 + \epsilon}}.
-$$
+```
 
 RMSNorm 少算一次均值、少一组偏置参数，**更省算力、训练更稳**，在大模型上几乎不掉精度。LLaMA、Qwen、Mistral、Gemma 等几乎全线采用 RMSNorm，它已成为现代 LLM 的事实标准。
 
-| 维度 | LayerNorm | RMSNorm |
-| --- | --- | --- |
-| 中心化（减均值） | 有 | 无 |
-| 重缩放 | 除以标准差 | 除以均方根（RMS） |
-| 可学习参数 | $\gamma, \beta$ | 仅 $\gamma$ |
-| 计算量 | 较高 | 较低 |
-| 现代 LLM 采用 | 早期（GPT-2 等） | 主流（LLaMA 系等） |
+
+| 维度             | LayerNorm        | RMSNorm            |
+| ------------------ | ------------------ | -------------------- |
+| 中心化（减均值） | 有               | 无                 |
+| 重缩放           | 除以标准差       | 除以均方根（RMS）  |
+| 可学习参数       | $\gamma, \beta$  | 仅$\gamma$         |
+| 计算量           | 较高             | 较低               |
+| 现代 LLM 采用    | 早期（GPT-2 等） | 主流（LLaMA 系等） |
 
 ### 2.2 Pre-Norm vs Post-Norm
 

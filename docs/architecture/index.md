@@ -37,10 +37,10 @@ flowchart TD
 
 形式上，第 $\ell$ 个 Pre-Norm 解码块对隐状态 $h$ 的更新可写作：
 
-$$
+```math
 h' = h + \mathrm{Attn}\big(\mathrm{Norm}(h)\big), \qquad
 h'' = h' + \mathrm{FFN}\big(\mathrm{Norm}(h')\big)
-$$
+```
 
 整张图里的每一个组件都对应一条独立的演进线索：注意力子层从 MHA 演化到 GQA/MLA；FFN 子层从 Dense 演化到 MoE；位置信息从绝对位置编码演化到 RoPE；归一化从 Post-Norm 演化到 Pre-Norm + RMSNorm；全注意力在长序列下又分化出稀疏/线性变体。下面逐条梳理。
 

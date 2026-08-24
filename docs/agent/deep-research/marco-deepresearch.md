@@ -95,7 +95,7 @@ flowchart LR
 现有深研 agent 的测试时扩展大多只是简单增加交互轮数或 rollout 预算，论文指出这种"盲目扩展"会**累积早期工具误差和噪声中间结论，反而降低长程搜索任务的可靠性**。为此提出 **Verifier-Guided Test-time Scaling**：把显式验证引入推理时扩展，并让 Marco DeepResearch 本身充当 verifier，配合 *Discard All* 的上下文管理策略，在固定的最大交互预算 $T_{\max}$ 下实现更有效的推理时扩展。
 
 - **Discard All**：一旦触发预定义的退化信号（如达到最大步数、或已判定无法解题），就清空累积的工具调用历史与中间推理输出，只保留最初的查询和 system prompt，从一个全新的上下文重新开始。这个重置机制让 agent 能探索新的搜索路径，减少单条轨迹上错误沿途累积的问题。
-- **Verifier-Guided Test-time Scaling**：每当 agent 产出一个候选答案，就用**基于规则的检查 + agent-as-judge**（用 Marco DeepResearch 自身当裁判）对其做校验。若 $t<T_{\max}$，agent 可以继续探索并提出新的候选答案，每个候选都被独立验证；当 $t=T_{\max}$ 或过程收敛，则对**全部候选**执行一次 **Joint Verify**（联合验证），生成该问题的最终答案。
+- **Verifier-Guided Test-time Scaling**：每当 agent 产出一个候选答案，就用**基于规则的检查 + agent-as-judge**（用 Marco DeepResearch 自身当裁判）对其做校验。若 $t\lt T_{\max}$，agent 可以继续探索并提出新的候选答案，每个候选都被独立验证；当 $t=T_{\max}$ 或过程收敛，则对**全部候选**执行一次 **Joint Verify**（联合验证），生成该问题的最终答案。
 
 两个组件互补：Discard All 通过重置退化的上下文提升轨迹质量，Verifier-Guided Test-time Scaling 提升答案质量；二者结合，在不改变模型参数的前提下实现更有效的测试时扩展，把难题上的推理时收益进一步放大。
 

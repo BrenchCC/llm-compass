@@ -78,9 +78,9 @@ flowchart LR
 
 用「指令-回答」数据做有监督微调，让基座模型学会听指令。
 
-$$
-\mathcal{L}_{\text{SFT}}(\theta) = -\mathbb{E}_{(x, y) \sim \mathcal{D}} \left[ \sum_{t=1}^{|y|} \log \pi_\theta(y_t \mid x, y_{<t}) \right]
-$$
+```math
+\mathcal{L}_{\text{SFT}}(\theta) = -\mathbb{E}_{(x, y) \sim \mathcal{D}} \left[ \sum_{t=1}^{|y|} \log \pi_\theta(y_t \mid x, y_{\lt t}) \right]
+```
 
 **适用**：大多数后训练流程的起点；数据质量、模板和 loss mask 通常比多训几个 epoch 更重要。 [详细 →](/sft/)
 
@@ -92,9 +92,9 @@ $$
 
 冻结 $W_0$，只训练低秩增量 $\Delta W = BA$。可训练参数通常降到 1% 以下，推理前可把 adapter 合并回原权重。
 
-$$
+```math
 h = W_0 x + \frac{\alpha}{r} B A x
-$$
+```
 
 **适用**：显存受限、任务改动相对局部的微调。 [详细 →](/lora/lora)
 
@@ -102,9 +102,9 @@ $$
 
 基座权重量化为 4-bit NF4 存储、计算时反量化，LoRA 适配器照常训练。
 
-$$
+```math
 h = \mathrm{dequant}(W_0^{\text{NF4}})\, x + \frac{\alpha}{r} B A x
-$$
+```
 
 **适用**：单卡或极低显存微调大模型；代价通常体现在训练速度和量化误差上。 [详细 →](/lora/qlora)
 
@@ -112,9 +112,9 @@ $$
 
 权重分解为幅值 × 方向：幅值直接训练、方向走 LoRA，学习行为更像全量微调。
 
-$$
+```math
 W = m \cdot \frac{W_0 + \frac{\alpha}{r} B A}{\left\lVert W_0 + \frac{\alpha}{r} B A \right\rVert_c}
-$$
+```
 
 **适用**：低 rank 下追效果。 [详细 →](/lora/dora)
 
@@ -128,9 +128,9 @@ SVD 形式参数化 $\Delta W = P \Lambda Q$，按重要性动态裁剪奇异值
 
 缩放因子从 $\alpha/r$ 改为 $\alpha/\sqrt{r}$，大 rank 时更新尺度不再衰减。
 
-$$
+```math
 h = W_0 x + \frac{\alpha}{\sqrt{r}} B A x
-$$
+```
 
 **适用**：rank 较大时稳定更新尺度，尤其适合先从现有 LoRA 配方做小改动。 [详细 →](/lora/rslora)
 
@@ -152,9 +152,9 @@ $$
 
 把 RLHF 的 KL 约束目标求出闭式解，"训 RM + 跑 RL"塌缩成一个分类损失。
 
-$$
+```math
 \mathcal{L}_{\text{DPO}} = -\mathbb{E} \left[ \log \sigma \left( \beta \log \frac{\pi_\theta(y_w|x)}{\pi_{\text{ref}}(y_w|x)} - \beta \log \frac{\pi_\theta(y_l|x)}{\pi_{\text{ref}}(y_l|x)} \right) \right]
-$$
+```
 
 **适用**：有成对偏好数据，且希望避开奖励模型和在线 RL 复杂度。 [详细 →](/dpo/dpo)
 
@@ -162,9 +162,9 @@ $$
 
 DPO 在确定性偏好下会把 reward 差推向无穷；IPO 改用平方损失，把差拉向固定目标。
 
-$$
+```math
 \mathcal{L}_{\text{IPO}} = \mathbb{E} \left[ \left( \log \frac{\pi_\theta(y_w|x)\,\pi_{\text{ref}}(y_l|x)}{\pi_\theta(y_l|x)\,\pi_{\text{ref}}(y_w|x)} - \frac{1}{2\tau} \right)^2 \right]
-$$
+```
 
 **适用**：DPO 明显过拟合偏好数据时。 [详细 →](/dpo/ipo)
 
@@ -178,9 +178,9 @@ $$
 
 SFT 损失 + odds ratio 惩罚，单阶段同时"学会回答 + 对齐偏好"，无 reference model。
 
-$$
+```math
 \mathcal{L}_{\text{ORPO}} = \mathcal{L}_{\text{SFT}}(y_w) - \lambda \log \sigma \left( \log \frac{\text{odds}_\theta(y_w|x)}{\text{odds}_\theta(y_l|x)} \right)
-$$
+```
 
 **适用**：想省掉 SFT → DPO 两阶段流程。 [详细 →](/dpo/orpo)
 
@@ -188,9 +188,9 @@ $$
 
 去 reference，隐式 reward 改为长度归一化的平均 logprob，加目标 margin $\gamma$。
 
-$$
+```math
 \mathcal{L}_{\text{SimPO}} = -\mathbb{E}\left[\log \sigma\!\left(\frac{\beta}{|y_w|}\log \pi_\theta(y_w|x) - \frac{\beta}{|y_l|}\log \pi_\theta(y_l|x) - \gamma\right)\right]
-$$
+```
 
 **适用**：显存紧张、被长度膨胀困扰。 [详细 →](/dpo/simpo)
 
@@ -198,9 +198,9 @@ $$
 
 用均匀先验近似 reference 得到 DPO 上界，加 SFT 项防止 chosen 概率塌缩。
 
-$$
+```math
 \mathcal{L}_{\text{CPO}} = -\mathbb{E}\left[\log \sigma\left(\beta \log \pi_\theta(y_w|x) - \beta \log \pi_\theta(y_l|x)\right)\right] - \mathbb{E}\left[\log \pi_\theta(y_w|x)\right]
-$$
+```
 
 **适用**：去 reference 且需要稳住生成质量（翻译等）。 [详细 →](/dpo/cpo)
 
@@ -208,17 +208,17 @@ $$
 
 RL 阶段共同的优化目标：
 
-$$
+```math
 \max_{\pi_\theta} \; \mathbb{E}_{y \sim \pi_\theta} \left[ r(x, y) \right] - \beta \, \mathbb{D}_{\text{KL}}\!\left[ \pi_\theta \,\|\, \pi_{\text{ref}} \right]
-$$
+```
 
 ### Reward Model
 
 在偏好数据上用 Bradley-Terry 损失训练打分模型，作为 RL 的奖励来源。
 
-$$
+```math
 \mathcal{L}_{\text{RM}} = -\mathbb{E} \left[ \log \sigma \left( r_\phi(x, y_w) - r_\phi(x, y_l) \right) \right]
-$$
+```
 
 **适用**：RLHF 的前置组件；质量决定 RL 上限。 [详细 →](/rlhf/reward-model)
 
@@ -226,9 +226,9 @@ $$
 
 裁剪重要性采样比值限制每步更新幅度，优势用 GAE（需训练 critic）。
 
-$$
+```math
 \mathcal{L}_{\text{PPO}} = -\mathbb{E}_t \left[ \min \left( \rho_t A_t, \; \mathrm{clip}(\rho_t, 1\pm\epsilon) A_t \right) \right]
-$$
+```
 
 **适用**：经典 RLHF；资源充足，且需要 critic 与 token 级 credit assignment。 [详细 →](/rlhf/ppo)
 
@@ -236,9 +236,9 @@ $$
 
 去掉 critic：同 prompt 采样一组回答，组内标准化 reward 即优势。
 
-$$
+```math
 \hat{A}_i = \frac{r_i - \mathrm{mean}(\{r_j\})}{\mathrm{std}(\{r_j\})}
-$$
+```
 
 **适用**：可验证奖励的推理任务 RL；DeepSeek-R1 路线让它成为近期最常见的配方之一。 [详细 →](/rlhf/grpo)
 
@@ -258,9 +258,9 @@ GRPO 的工程修正四件套：clip-higher、动态采样、token 级策略梯�
 
 回归 REINFORCE：每个回答用其余 $k{-}1$ 个的平均 reward 做基线，无偏、无 critic。
 
-$$
+```math
 \nabla \mathcal{J} = \frac{1}{k} \sum_{i} \Big( r_i - \tfrac{1}{k-1}\textstyle\sum_{j \neq i} r_j \Big) \nabla \log \pi_\theta(y_i | x)
-$$
+```
 
 **适用**：追求简单与无偏的组采样方案。 [详细 →](/rlhf/rloo)
 
@@ -282,9 +282,9 @@ REINFORCE + PPO 的稳定化技巧（token 级 KL、clip、全局 batch 优势�
 
 对齐师生的输出分布，最小化 KL 散度（前向 KL / 反向 KL，on-policy 如 GKD）。
 
-$$
+```math
 \mathcal{L}_{\text{KD}} = \mathbb{D}_{\text{KL}}\!\left[ p_{\text{teacher}} \,\|\, p_{\text{student}} \right]
-$$
+```
 
 **适用**：师生同词表、能拿到教师 logits，追求更高保真。 [详细 →](/distillation/white-box)
 
