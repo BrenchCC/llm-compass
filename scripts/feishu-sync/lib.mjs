@@ -370,13 +370,6 @@ export function buildRouteMap(tree) {
   return routeMap
 }
 
-function escapeXml(value) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-}
-
 function escapeLiteralAngles(line) {
   let result = ""
   let inCode = false
@@ -540,10 +533,18 @@ function normalizeMermaid(content) {
   }).join("\n")
 }
 
-function renderLatex(content) {
+function normalizeLarkMath(content) {
+  return content.replace(
+    /\\(text|texttt)\{([^{}]*)\}/g,
+    (_, command, value) => (
+      `\\${command}{${value.replace(/\\_/g, "\\textunderscore{}")}}`
+    )
+  )
+}
+
+function renderMarkdownMath(content) {
   const normalizedContent = content.trim().replace(/\s*\n\s*/g, " ")
-  const escapedContent = escapeXml(normalizedContent)
-  return `<latex>${escapedContent}</latex>`
+  return `$$${normalizeLarkMath(normalizedContent)}$$`
 }
 
 function readDollarMathBlock(lines, startIndex) {
@@ -601,7 +602,7 @@ export function transformMarkdown({source, sourcePath, routeMap, nodeMap}) {
           mermaidFiles.push({content: normalizedContent, relativePath})
           output.push(`<whiteboard type="mermaid" path="@./${relativePath}"></whiteboard>`)
         } else {
-          output.push(renderLatex(blockContent))
+          output.push(renderMarkdownMath(blockContent))
         }
         continue
       }
@@ -620,7 +621,7 @@ export function transformMarkdown({source, sourcePath, routeMap, nodeMap}) {
 
     const dollarMathBlock = readDollarMathBlock(lines, index)
     if (dollarMathBlock) {
-      output.push(renderLatex(dollarMathBlock.content))
+      output.push(renderMarkdownMath(dollarMathBlock.content))
       index = dollarMathBlock.endIndex
       continue
     }

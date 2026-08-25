@@ -1,5 +1,9 @@
+import fs from "node:fs"
+import path from "node:path"
 import assert from "node:assert/strict"
 import test from "node:test"
+
+import katex from "katex"
 
 import {
   LarkClient,
@@ -318,20 +322,20 @@ test("transformMarkdown converts VitePress syntax, resources, formulas, diagrams
   assert.match(result.content, /!\[架构\]\(@\.\/docs\/public\/papers\/demo\/arch\.png\)/)
   assert.ok(
     result.content.includes(
-      String.raw`<latex>a &lt; b &amp; c &gt; d \frac{x}{y}</latex>`
+      String.raw`$$a < b & c > d \frac{x}{y}$$`
     )
   )
   assert.ok(
     result.content.includes(
-      String.raw`<latex>\mathcal{L} = \mathbb{E}[x]</latex>`
+      String.raw`$$\mathcal{L} = \mathbb{E}[x]$$`
     )
   )
   assert.ok(
     result.content.includes(
-      String.raw`<latex>\mathrm{KL}(p \| q)</latex>`
+      String.raw`$$\mathrm{KL}(p \| q)$$`
     )
   )
-  assert.doesNotMatch(result.content, /^\s*\$\$/m)
+  assert.doesNotMatch(result.content, /<latex>/)
   assert.match(result.content, /<whiteboard type="mermaid" path="@\.\/\.feishu-sync-tmp\/mermaid\/[a-f0-9]{64}\.mmd"><\/whiteboard>/)
   assert.match(result.content, /\[不转换\]\(\/guide\/notation\) <raw>/)
   assert.equal(result.mermaidFiles.length, 1)
@@ -355,12 +359,18 @@ test("transformMarkdown converts VitePress syntax, resources, formulas, diagrams
   ])
 })
 
-test("transformMarkdown preserves LaTeX escapes inside Lark formula nodes", () => {
+test("transformMarkdown preserves LaTeX syntax inside Lark Markdown formulas", () => {
   const source = [
     "# Formula compatibility",
     "",
     "```math",
     String.raw`f(x) = \begin{cases} x & x \lt 0 \\ y & x \gt 0 \end{cases}`,
+    "```",
+    "",
+    "```math",
+    String.raw`\text{每 token 字节数} = \underbrace{2}_{K \text{和} V} \times L \times \underbrace{n_h d_h}_{=\,\text{hidden\_size}} \times p,`,
+    String.raw`\qquad`,
+    String.raw`\text{总显存} = b \times s \times \text{每 token 字节数}`,
     "```"
   ].join("\n")
 
@@ -373,9 +383,46 @@ test("transformMarkdown preserves LaTeX escapes inside Lark formula nodes", () =
 
   assert.ok(
     result.content.includes(
-      String.raw`<latex>f(x) = \begin{cases} x &amp; x \lt 0 \\ y &amp; x \gt 0 \end{cases}</latex>`
+      String.raw`$$f(x) = \begin{cases} x & x \lt 0 \\ y & x \gt 0 \end{cases}$$`
     )
   )
+  assert.ok(
+    result.content.includes(
+      String.raw`$$\text{每 token 字节数} = \underbrace{2}_{K \text{和} V} \times L \times \underbrace{n_h d_h}_{=\,\text{hidden\textunderscore{}size}} \times p, \qquad \text{总显存} = b \times s \times \text{每 token 字节数}$$`
+    )
+  )
+  assert.doesNotMatch(result.content, /<latex>/)
+})
+
+test("all generated Lark block formulas pass KaTeX validation", () => {
+  const sourcePaths = fs
+    .readdirSync("docs", {recursive: true})
+    .filter((sourcePath) => sourcePath.endsWith(".md"))
+    .map((sourcePath) => path.posix.join("docs", sourcePath))
+  let formulaCount = 0
+
+  for (const sourcePath of sourcePaths) {
+    const source = fs.readFileSync(sourcePath, "utf8")
+    const result = transformMarkdown({
+      source,
+      sourcePath,
+      routeMap: new Map(),
+      nodeMap: new Map()
+    })
+
+    assert.doesNotMatch(result.content, /<latex>/, sourcePath)
+    for (const match of result.content.matchAll(/^\$\$(.*?)\$\$$/gm)) {
+      formulaCount += 1
+      const formula = match[1]
+      assert.doesNotMatch(formula, /\\_/, sourcePath)
+      assert.doesNotThrow(
+        () => katex.renderToString(formula, {throwOnError: true, strict: "error"}),
+        sourcePath
+      )
+    }
+  }
+
+  assert.ok(formulaCount > 0)
 })
 
 test("computeRenderHash changes when a referenced asset changes", () => {
